@@ -20,7 +20,7 @@
 */
 
 //função do albini
-//utilizar Loop Back (lo) como device
+//utilizar Loop Back ("lo") como device
 int ConexaoRawSocket(char *device)
 {
   int soquete;
@@ -78,21 +78,6 @@ int open_socket() {
 
 }
 */
-int receive_from_socket(int sock, unsigned char *buffer, struct sockaddr sadrr) {
-
-    int buflen, saddr_len;
-
-    saddr_len = sizeof(sadrr);
-
-    buflen = recvfrom(sock, buffer, BUFFERSIZE, 0, &saddr, (socklen_t *)&saddr_len);
-
-    if (buflen < 0) {
-        printf("error reading recvfrom function\n");
-        return -1;
-    }
-    return buflen;
-
-}
 
 unsigned char *empacota(unsigned char *buffer, int tamanho, int tipo, int destino, int origem, int sequencia) {
 
@@ -128,7 +113,7 @@ unsigned char *empacota(unsigned char *buffer, int tamanho, int tipo, int destin
     return packet;
 }
 
-int send_to_socket(int sock, unsigned char *buffer, int tam, int tipo, int destino, int origem) {
+int send_to_socket(int socket, unsigned char *buffer, int tam, int tipo, int destino, int origem) {
 
     int full_p, tam_leftover_p, index;
 
@@ -137,15 +122,78 @@ int send_to_socket(int sock, unsigned char *buffer, int tam, int tipo, int desti
 
     for (int i=0; i<full_p; i++) {
         index = i % 16;
-        empacota(buffer[15*i], 15, tipo, destino, origem, index);
-
+        send(
+            socket,
+            (void *)empacota(buffer[15*i], 15, tipo, destino, origem, index),
+            15+4, 0
+        );
+        
     }
 
     if ((tam_leftover_p > 0) || (full_p == 0)) {
-        empacota(buffer[15*full_p], tam_leftover_p, tipo, destino, origem, (index+1) % 16);
+        send(
+            socket,
+            (void *)empacota(buffer[15*full_p], tam_leftover_p, tipo, destino, origem, (index+1) % 16),
+            tam_leftover_p+4, 0
+        );
 
 
     }
 }
 
+packet_t desempacota(unsigned char *data) {
 
+    packet_t p;
+    unsigned char parity;
+/*
+    if (data[0] == 0b01111110) {
+        printf("ERROR: no init byte\n");
+        return NULL;
+    }
+*/
+    p.e_destino = data[1] >> 6;
+    p.e_origem = (data[1] & 0b00110000) >> 4;
+    p.tam = data[1] & 0b00001111;
+    p.sequencia = data[2] >> 4;
+    p.tipo = data[2] & 0b00001111;
+
+    parity = p.tam ^ p.sequencia ^ p.tipo;
+
+    if (p.tam > 0) {
+        p.dados = malloc(p.tam*sizeof(unsigned int));
+        for (int i=0; i<p.tam; i++) {
+            p.dados[i] = data[3+i];
+            parity = parity ^ data[3+i];
+        }
+    }
+
+    if (parity != data[3+p.tam]) {
+        printf("ERROR: parity byte wrong\n");
+        return NULL;
+    }
+    return p;
+    
+}
+
+vector<packet_t> receive_from_socket(int socket, unsigned char *buffer) {
+
+    int buflen;
+    vector<packet_t> v;
+
+//    buflen = recvfrom(sock, buffer, BUFFERSIZE, 0, &saddr, (socklen_t *)&saddr_len);
+
+    buflen = recv(socket, buffer, BUFFERSIZE, 0);
+
+    if (buflen < 0) {
+        printf("error reading recvfrom function\n");
+        return -1;
+    }
+
+    for(int i=0; i<buflen; i++)
+        if (*(buffer+i) == 0b01111110) {
+            v.push_back(desempacota(buffer+i));
+        }
+
+    return v;
+
+}
