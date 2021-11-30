@@ -1,7 +1,12 @@
 #include <bits/stdc++.h>
-#include "structs.h"
+
+#ifndef COMMON
+#define COMMON
+#include "common.h"
+#endif
 
 #define BUFFERSIZE 65536
+
 /*
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -73,13 +78,13 @@ int open_socket() {
 
 }
 */
-int receive_from_socket(int sock_r, unsigned char *buffer, struct sockaddr sadrr) {
+int receive_from_socket(int sock, unsigned char *buffer, struct sockaddr sadrr) {
 
     int buflen, saddr_len;
 
     saddr_len = sizeof(sadrr);
 
-    buflen = recvfrom(sock_r, buffer, BUFFERSIZE, 0, &saddr, (socklen_t *)&saddr_len);
+    buflen = recvfrom(sock, buffer, BUFFERSIZE, 0, &saddr, (socklen_t *)&saddr_len);
 
     if (buflen < 0) {
         printf("error reading recvfrom function\n");
@@ -87,6 +92,60 @@ int receive_from_socket(int sock_r, unsigned char *buffer, struct sockaddr sadrr
     }
     return buflen;
 
+}
+
+unsigned char *empacota(unsigned char *buffer, int tamanho, int tipo, int destino, int origem, int sequencia) {
+
+    //[inicio, destino origem tamanho, sequencia tipo, dados, paridade]
+
+    unsigned char *packet;
+    unsigned char inicio, dest_c, orig_c, tam_c, seq_c, tipo_c, paridade, tmp;
+
+    packet = malloc(8+2+2+4+4+4+tam+8);
+
+    inicio = 0b01111110;
+    packet[0] = inicio;
+
+    dest_c = (unsigned char) destino;
+    orig_c = (unsigned char) origem;
+    tam_c = (unsigned char) tamanho;
+    packet[1] = (dest_c << (2+4)) | (orig_c << 4) | (tam_c);
+
+    seq_c = (unsigned char) sequencia;
+    tipo_c = (unsigned char) tipo;
+    packet[2] = (seq_c << 4) | (tipo_c);
+
+    tmp = tam_c ^ seq_c ^ tipo_c;
+
+    for(int i=0; i<tamanho; i++) {
+        packet[3+i] = buffer[i];
+        tmp = tmp ^ buffer[i];
+    }
+    
+    packet[3+tamanho] = tmp;
+
+    //packet_len = 4+tamanho
+    return packet;
+}
+
+int send_to_socket(int sock, unsigned char *buffer, int tam, int tipo, int destino, int origem) {
+
+    int full_p, tam_leftover_p, index;
+
+    full_p = tam/15;
+    tam_leftover_p = tam % 15;
+
+    for (int i=0; i<full_p; i++) {
+        index = i % 16;
+        empacota(buffer[15*i], 15, tipo, destino, origem, index);
+
+    }
+
+    if ((tam_leftover_p > 0) || (full_p == 0)) {
+        empacota(buffer[15*full_p], tam_leftover_p, tipo, destino, origem, (index+1) % 16);
+
+
+    }
 }
 
 
