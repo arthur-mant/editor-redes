@@ -15,8 +15,6 @@
 #include "common.h"
 #endif
 
-#define BUFFERSIZE 65536
-
 //função do albini
 //utilizar Loop Back ("lo") como device
 int ConexaoRawSocket(char *device)
@@ -79,6 +77,7 @@ unsigned char *empacota(unsigned char *buffer, int tamanho, int tipo, int destin
     tam_c = (unsigned char) tamanho;
     packet[1] = (dest_c << (2+4)) | (orig_c << 4) | (tam_c);
 
+    printf("seq: %#04x, tipo: %#04x\n", sequencia, tipo);
     seq_c = (unsigned char) sequencia;
     tipo_c = (unsigned char) tipo;
     packet[2] = (seq_c << 4) | (tipo_c);
@@ -99,24 +98,47 @@ unsigned char *empacota(unsigned char *buffer, int tamanho, int tipo, int destin
 int send_to_socket(int socket, unsigned char *buffer, int tam, int tipo, int destino, int origem) {
 
     int full_p, tam_leftover_p, index;
-
+    unsigned char *aux;
+/*
+    printf("sending following byte string to socket %d\n[", socket);
+    for (int i=0; i<tam; i++)
+        printf("%#04x, ", *(buffer+i));
+    printf("]\n");
+*/
     full_p = tam/15;
     tam_leftover_p = tam % 15;
 
+    index = 0;
     for (int i=0; i<full_p; i++) {
-        index = i % 16;
+
+        aux = empacota(buffer + 15*i, 15, tipo, destino, origem, index),
+        printf("sending following byte string to socket %d\n[", socket);
+        for (int i=0; i<15+4; i++)
+            printf("%#04x, ", *(aux+i));
+        printf("]\n");
+
         send(
             socket,
-            (void *)empacota(buffer + 15*i, 15, tipo, destino, origem, index),
+            (void *)aux,
+            //(void *)empacota(buffer + 15*i, 15, tipo, destino, origem, index),
             15+4, 0
         );
+
+        index = (index+1) % 16;
         
     }
 
     if ((tam_leftover_p > 0) || (full_p == 0)) {
+        aux = empacota(buffer + 15*full_p, tam_leftover_p, tipo, destino, origem, index),
+        printf("sending following byte string to socket %d\n[", socket);
+        for (int i=0; i<tam_leftover_p+4; i++)
+            printf("%#04x, ", *(aux+i));
+        printf("]\n");
+
         send(
             socket,
-            (void *)empacota(buffer + 15*full_p, tam_leftover_p, tipo, destino, origem, (index+1) % 16),
+            (void *)aux,
+            //(void *)empacota(buffer + 15*full_p, tam_leftover_p, tipo, destino, origem, (index+1) % 16),
             tam_leftover_p+4, 0
         );
 
@@ -167,6 +189,12 @@ std::vector<packet_t> receive_from_socket(int socket, unsigned char *buffer) {
         printf("error reading recvfrom function\n");
         return {};
     }
+
+    printf("receiving following byte string from socket %d\n[", socket);
+    for (int i=0; i<buflen; i++)
+        printf("%#04x, ", *(buffer+i));
+    printf("]\n");
+
 
     for(int i=0; i<buflen; i++)
         if (*(buffer+i) == 0b01111110) {

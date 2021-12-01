@@ -1,3 +1,5 @@
+#include <vector>
+
 typedef struct packet_t {
 
     unsigned int e_destino;
@@ -8,3 +10,12 @@ typedef struct packet_t {
     unsigned char *dados;
 
 } packet_t;
+
+#define BUFFERSIZE 65536
+
+int ConexaoRawSocket(char *device);
+//unsigned char *empacota(unsigned char *buffer, int tamanho, int tipo, int destino, int origem, int sequencia);
+int send_to_socket(int socket, unsigned char *buffer, int tam, int tipo, int destino, int origem);
+//packet_t *desempacota(unsigned char *data);
+std::vector<packet_t> receive_from_socket(int socket, unsigned char *buffer);
+
