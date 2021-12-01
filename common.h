@@ -5,6 +5,6 @@ typedef struct packet_t {
     unsigned int tam;
     unsigned int sequencia;
     unsigned int tipo;
-    unsigned int *dados;
+    unsigned char *dados;
 
 } packet_t;

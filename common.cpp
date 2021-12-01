@@ -1,13 +1,3 @@
-#include <bits/stdc++.h>
-
-#ifndef COMMON
-#define COMMON
-#include "common.h"
-#endif
-
-#define BUFFERSIZE 65536
-
-/*
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
@@ -17,7 +7,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-*/
+#include <vector>
+#include <netinet/in.h>
+
+#ifndef COMMON
+#define COMMON
+#include "common.h"
+#endif
+
+#define BUFFERSIZE 65536
 
 //função do albini
 //utilizar Loop Back ("lo") como device
@@ -63,21 +61,6 @@ int ConexaoRawSocket(char *device)
 
   return soquete;
 }
-/*
-int open_socket() {
-
-    int sock_r;
-
-    sock_r = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
-
-    if (sock_r<0) {
-        printf("error opening socket\n");
-        return -1;
-    }
-    return sock_r;
-
-}
-*/
 
 unsigned char *empacota(unsigned char *buffer, int tamanho, int tipo, int destino, int origem, int sequencia) {
 
@@ -86,7 +69,7 @@ unsigned char *empacota(unsigned char *buffer, int tamanho, int tipo, int destin
     unsigned char *packet;
     unsigned char inicio, dest_c, orig_c, tam_c, seq_c, tipo_c, paridade, tmp;
 
-    packet = malloc(8+2+2+4+4+4+tam+8);
+    packet = (unsigned char *)malloc(8+2+2+4+4+4+tamanho+8);
 
     inicio = 0b01111110;
     packet[0] = inicio;
@@ -124,7 +107,7 @@ int send_to_socket(int socket, unsigned char *buffer, int tam, int tipo, int des
         index = i % 16;
         send(
             socket,
-            (void *)empacota(buffer[15*i], 15, tipo, destino, origem, index),
+            (void *)empacota(buffer + 15*i, 15, tipo, destino, origem, index),
             15+4, 0
         );
         
@@ -133,7 +116,7 @@ int send_to_socket(int socket, unsigned char *buffer, int tam, int tipo, int des
     if ((tam_leftover_p > 0) || (full_p == 0)) {
         send(
             socket,
-            (void *)empacota(buffer[15*full_p], tam_leftover_p, tipo, destino, origem, (index+1) % 16),
+            (void *)empacota(buffer + 15*full_p, tam_leftover_p, tipo, destino, origem, (index+1) % 16),
             tam_leftover_p+4, 0
         );
 
@@ -141,33 +124,28 @@ int send_to_socket(int socket, unsigned char *buffer, int tam, int tipo, int des
     }
 }
 
-packet_t desempacota(unsigned char *data) {
+packet_t *desempacota(unsigned char *data) {
 
-    packet_t p;
+    packet_t *p = (packet_t *)malloc(sizeof(packet_t));
     unsigned char parity;
-/*
-    if (data[0] == 0b01111110) {
-        printf("ERROR: no init byte\n");
-        return NULL;
-    }
-*/
-    p.e_destino = data[1] >> 6;
-    p.e_origem = (data[1] & 0b00110000) >> 4;
-    p.tam = data[1] & 0b00001111;
-    p.sequencia = data[2] >> 4;
-    p.tipo = data[2] & 0b00001111;
 
-    parity = p.tam ^ p.sequencia ^ p.tipo;
+    p->e_destino = data[1] >> 6;
+    p->e_origem = (data[1] & 0b00110000) >> 4;
+    p->tam = data[1] & 0b00001111;
+    p->sequencia = data[2] >> 4;
+    p->tipo = data[2] & 0b00001111;
 
-    if (p.tam > 0) {
-        p.dados = malloc(p.tam*sizeof(unsigned int));
-        for (int i=0; i<p.tam; i++) {
-            p.dados[i] = data[3+i];
+    parity = p->tam ^ p->sequencia ^ p->tipo;
+
+    if (p->tam > 0) {
+        p->dados = (unsigned char *)malloc(p->tam*sizeof(unsigned char));
+        for (int i=0; i<p->tam; i++) {
+            p->dados[i] = data[3+i];
             parity = parity ^ data[3+i];
         }
     }
 
-    if (parity != data[3+p.tam]) {
+    if (parity != data[3+p->tam]) {
         printf("ERROR: parity byte wrong\n");
         return NULL;
     }
@@ -175,10 +153,11 @@ packet_t desempacota(unsigned char *data) {
     
 }
 
-vector<packet_t> receive_from_socket(int socket, unsigned char *buffer) {
+std::vector<packet_t> receive_from_socket(int socket, unsigned char *buffer) {
 
     int buflen;
-    vector<packet_t> v;
+    packet_t *tmp;
+    std::vector<packet_t> v;
 
 //    buflen = recvfrom(sock, buffer, BUFFERSIZE, 0, &saddr, (socklen_t *)&saddr_len);
 
@@ -186,12 +165,14 @@ vector<packet_t> receive_from_socket(int socket, unsigned char *buffer) {
 
     if (buflen < 0) {
         printf("error reading recvfrom function\n");
-        return -1;
+        return {};
     }
 
     for(int i=0; i<buflen; i++)
         if (*(buffer+i) == 0b01111110) {
-            v.push_back(desempacota(buffer+i));
+            tmp = desempacota(buffer+i);
+            if (tmp != NULL)
+                v.push_back(*tmp);
         }
 
     return v;
