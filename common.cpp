@@ -67,7 +67,8 @@ unsigned char *empacota(unsigned char *buffer, int tamanho, int tipo, int destin
     unsigned char *packet;
     unsigned char inicio, dest_c, orig_c, tam_c, seq_c, tipo_c, paridade, tmp;
 
-    packet = (unsigned char *)malloc(8+2+2+4+4+4+tamanho+8);
+    //packet = (unsigned char *)malloc(8+2+2+4+4+4+tamanho+8);
+    packet = (unsigned char *)malloc(19);
 
     inicio = 0b01111110;
     packet[0] = inicio;
@@ -90,6 +91,10 @@ unsigned char *empacota(unsigned char *buffer, int tamanho, int tipo, int destin
     }
     
     packet[3+tamanho] = tmp;
+
+    for (int i=3+tamanho+1; i<19; i++)
+        packet[i] = 0;
+
 
     //packet_len = 4+tamanho
     return packet;
@@ -139,7 +144,8 @@ int send_to_socket(int socket, unsigned char *buffer, int tam, int tipo, int des
             socket,
             (void *)aux,
             //(void *)empacota(buffer + 15*full_p, tam_leftover_p, tipo, destino, origem, (index+1) % 16),
-            tam_leftover_p+4, 0
+            //tam_leftover_p+4, 0
+            19, 0
         );
 
 
@@ -189,12 +195,12 @@ std::vector<packet_t> receive_from_socket(int socket, unsigned char *buffer) {
         printf("error reading recvfrom function\n");
         return {};
     }
-
+/*
     printf("receiving following byte string from socket %d\n[", socket);
     for (int i=0; i<buflen; i++)
         printf("%#04x, ", *(buffer+i));
     printf("]\n");
-
+*/
 
     for(int i=0; i<buflen; i++)
         if (*(buffer+i) == 0b01111110) {
