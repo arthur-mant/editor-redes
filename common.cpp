@@ -183,24 +183,25 @@ packet_t *desempacota(unsigned char *data) {
 
 std::vector<packet_t> receive_from_socket(int socket, unsigned char *buffer) {
 
-    int buflen;
+    int buflen, saddr_len;
     packet_t *tmp;
     std::vector<packet_t> v;
+    struct sockaddr_ll saddr;
 
-//    buflen = recvfrom(sock, buffer, BUFFERSIZE, 0, &saddr, (socklen_t *)&saddr_len);
+    saddr_len = sizeof (struct sockaddr_ll);
 
-    buflen = recv(socket, buffer, BUFFERSIZE, 0);
+//    buflen = recv(socket, buffer, BUFFERSIZE, 0);
+    buflen = recvfrom(socket, buffer, BUFFERSIZE, 0, (struct sockaddr *)&saddr, (socklen_t *)&saddr_len);
 
     if (buflen < 0) {
         printf("error reading recvfrom function\n");
         return {};
     }
-/*
-    printf("receiving following byte string from socket %d\n[", socket);
-    for (int i=0; i<buflen; i++)
-        printf("%#04x, ", *(buffer+i));
-    printf("]\n");
-*/
+    //evita receber duplicatas
+    if (saddr.sll_pkttype == PACKET_OUTGOING) {
+        //printf("ignoring outgoing packet\n");
+        return {};
+    }
 
     for(int i=0; i<buflen; i++)
         if (*(buffer+i) == 0b01111110) {
