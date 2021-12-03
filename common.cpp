@@ -16,6 +16,8 @@
 #include "common.h"
 #endif
 
+int receive_from_socket(int socket, unsigned char *buffer, packet_t **out, int endereco);
+
 //função do albini
 //utilizar Loop Back ("lo") como device
 int ConexaoRawSocket(char *device)
@@ -69,7 +71,8 @@ unsigned char *empacota(unsigned char *buffer, int tamanho, int tipo, int destin
     unsigned char inicio, dest_c, orig_c, tam_c, seq_c, tipo_c, paridade, tmp;
 
     //packet = (unsigned char *)malloc(8+2+2+4+4+4+tamanho+8);
-    packet = (unsigned char *)malloc(19);
+
+    packet = (unsigned char *)malloc(20*sizeof(unsigned char));
 
     inicio = 0b01111110;
     packet[0] = inicio;
@@ -79,7 +82,7 @@ unsigned char *empacota(unsigned char *buffer, int tamanho, int tipo, int destin
     tam_c = (unsigned char) tamanho;
     packet[1] = (dest_c << (2+4)) | (orig_c << 4) | (tam_c);
 
-    printf("seq: %#04x, tipo: %#04x\n", sequencia, tipo);
+    //printf("seq: %#04x, tipo: %#04x\n", sequencia, tipo);
     seq_c = (unsigned char) sequencia;
     tipo_c = (unsigned char) tipo;
     packet[2] = (seq_c << 4) | (tipo_c);
@@ -92,6 +95,8 @@ unsigned char *empacota(unsigned char *buffer, int tamanho, int tipo, int destin
     }
     
     packet[3+tamanho] = tmp;
+
+
 
     for (int i=3+tamanho+1; i<19; i++)
         packet[i] = 0;
@@ -108,6 +113,57 @@ int send_to_socket(int socket, unsigned char *buffer, int tam, int tipo, int des
         (void *)empacota(buffer, tam, tipo, destino, origem, sequencia),
         15+4, 0
     );
+}
+
+int send_and_wait(int socket, unsigned char *buffer, int tam, int tipo, int destino, int origem, int sequencia) {
+
+    bool ack;
+    packet_t *p;
+    int retry = 0;
+
+    do {
+        send_to_socket(socket, buffer, tam, tipo, destino, origem, sequencia);
+
+        auto start = std::chrono::high_resolution_clock::now();
+        ack = false;
+        do {
+            if (receive_from_socket(socket, buffer, &p, origem) == 0) {
+                if (p->tipo == 0b1000)
+                    ack = true;
+                if (p->tipo == 0b1001)
+                    send_to_socket(socket, buffer, tam, tipo, destino, origem, sequencia);
+            }
+        } while ((!ack) &&
+            (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count() < TIMEOUT));
+        retry++;
+        if (!ack) printf("TIMEOUT, retrying...\n");
+    } while ((!ack) && (retry < MAX_RETRIES));
+
+    if (!ack) {
+        printf("ERROR: Max tries reached, something's wrong...\n");
+        return -1;
+    }
+    return 0;
+}
+
+int send_any_size(int socket, unsigned char *buffer, unsigned char *copy_buffer, int tam, int tipo, int destino, int origem) {
+
+    int index = 0;
+
+    do {
+        memcpy(copy_buffer, buffer, std::min(tam, 15));
+
+        if (send_and_wait(socket, copy_buffer, std::min(tam, 15), tipo, destino, origem, index) == -1) {
+            printf("PANIC!!!\n");
+            return -1;
+        }
+        tam = tam - 15;
+        buffer = buffer + 15;
+        index = (index + 1) % 16;
+    } while(tam > 0);
+
+    return 0;
+
 }
 
 packet_t *desempacota(unsigned char *data) {
@@ -139,6 +195,7 @@ int receive_from_socket(int socket, unsigned char *buffer, packet_t **out, int e
     int buflen, saddr_len;
     packet_t *p;
     struct sockaddr_ll saddr;
+    unsigned int parity;
 
     saddr_len = sizeof (struct sockaddr_ll);
 
@@ -174,54 +231,7 @@ int receive_from_socket(int socket, unsigned char *buffer, packet_t **out, int e
     return -2;
 }
 
-int send_and_wait(int socket, unsigned char *buffer, int tam, int tipo, int destino, int origem, int sequencia) {
 
-    bool ack;
-    packet_t *p;
-    int retry = 0;
-
-    do {
-        send_to_socket(socket, buffer, tam, tipo, destino, origem, sequencia);
-
-        auto start = std::chrono::high_resolution_clock::now();
-        ack = false;
-        do {
-            if (receive_from_socket(socket, buffer, &p, origem) == 0)
-                if (p->tipo == 0b1000)
-                    ack = true;
-                if (p->tipo == 0b1001)
-                    send_to_socket(socket, buffer, tam, tipo, destino, origem, sequencia);
-                    
-        } while ((!ack) &&
-            (std::chrono::high_resolution_clock::now() - start < TIMEOUT));
-        retry++;
-        if (!ack) printf("TIMEOUT, retrying...\n");
-    } while ((!ack) && (retry < MAX_RETRIES));
-
-    if (!ack) {
-        printf("ERROR: Max tries reached, something's wrong...\n");
-        return -1;
-    }
-    return 0;
-}
-
-int send_any_size(int socket, unsigned char *buffer, int tam, int tipo, int destino, int origem) {
-
-    int index = 0;
-
-    do {
-        if (send_and_wait(socket, *buffer, min(tam, 15), tipo, destino, origem, index) == -1) {
-            printf("PANIC!!!\n");
-            return -1;
-        }
-        tam = tam - 15;
-        buffer = buffer + 15;
-        index = (index + 1) % 16;
-    } while(tam > 0);
-
-    return 0;
-
-}
 
 packet_t *receive_and_respond(int socket, unsigned char *buffer, int endereco) {
 
@@ -230,7 +240,6 @@ packet_t *receive_and_respond(int socket, unsigned char *buffer, int endereco) {
 
     aux = receive_from_socket(socket, buffer, &p, endereco);
 
-    auto start = std::chrono::high_resolution_clock::now();
     retry = 0;
 
     if (aux == 0) {
@@ -242,10 +251,11 @@ packet_t *receive_and_respond(int socket, unsigned char *buffer, int endereco) {
         send_to_socket(socket, buffer, 0, 0b1001, p->e_origem, p->e_destino, 0);
         //wait for reponse
         do {
+            auto start = std::chrono::high_resolution_clock::now();
             do {
                 aux = receive_from_socket(socket, buffer, &p, endereco);
             } while ((aux != 0) &&
-                (std::chrono::high_resolution_clock::now() - start < TIMEOUT));
+                (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count() < TIMEOUT));
             retry++;
             if (aux != 0) printf("TIMEOUT, retrying...\n");
         } while ((aux != 0) && (retry < MAX_RETRIES));
@@ -253,7 +263,6 @@ packet_t *receive_and_respond(int socket, unsigned char *buffer, int endereco) {
 
     if (aux == 0)
         return p;
-    printf("PANIC: missing packet\n");
     return NULL;
 
 }
