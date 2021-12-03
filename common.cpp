@@ -133,6 +133,7 @@ int send_and_wait(int socket, unsigned char *buffer, int tam, int tipo, int dest
                     ack = true;
                 if (p->tipo == 0b1001)
                     send_to_socket(socket, buffer, tam, tipo, destino, origem, sequencia);
+        
             }
         } while ((!ack) &&
             (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count() < TIMEOUT));

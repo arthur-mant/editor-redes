@@ -4,9 +4,21 @@
 #include <iostream>
 
 #define ADDRESS 0b01
+#define REMOTE_ADDRESS 0b10
 
-void cd(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned char *copy_buffer) {
-    printf("on cd\n");
+int cd(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned char *copy_buffer) {
+
+    if (v.size() < 2) {
+        printf("please specify a directory\n");
+        return -1;
+    }
+
+    memcpy(buffer, v.at(1).c_str(), v.at(1).size()+1);
+    send_any_size(socket, buffer, copy_buffer, v.at(1).size()+1, , int destino, int origem);
+    //se der erro?
+
+    return 0;
+
 }
 void lcd(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned char *copy_buffer) {
     printf("on lcd\n");
