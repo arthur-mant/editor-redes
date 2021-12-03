@@ -1,5 +1,3 @@
-#include <vector>
-
 typedef struct packet_t {
 
     unsigned int e_destino;
@@ -8,10 +6,13 @@ typedef struct packet_t {
     unsigned int sequencia;
     unsigned int tipo;
     unsigned char *dados;
+    unsigned int parity;
 
 } packet_t;
 
 #define BUFFERSIZE 65536
+#define TIMEOUT 5000        //in ms
+#define MAX_RETRIES 5
 
 int ConexaoRawSocket(char *device);
 //unsigned char *empacota(unsigned char *buffer, int tamanho, int tipo, int destino, int origem, int sequencia);
