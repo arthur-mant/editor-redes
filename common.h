@@ -19,7 +19,9 @@ typedef struct packet_t {
 #define MAX_RETRIES 5
 
 int ConexaoRawSocket(char *device);
-int send_any_size(int socket, unsigned char *buffer, unsigned char *copy_buffer, int tam, int tipo, int destino, int origem);
+std::vector<packet_t> send_any_size(int socket, unsigned char *buffer, unsigned char *copy_buffer, int tam, int tipo, int destino, int origem);
 std::vector<packet_t> receive_until_termination(int socket, unsigned char *buffer, int endereco);
 std::vector<std::string>separate_string(std::string, char);
+int send_ACK(int socket, unsigned char *buffer, int destino, int origem, int sequencia);
+int send_error(int socket, unsigned char *buffer, int destino, int origem, int error);
 

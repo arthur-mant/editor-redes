@@ -18,6 +18,7 @@
 #endif
 
 int receive_from_socket(int socket, unsigned char *buffer, packet_t **out, int endereco);
+int send_NACK(int socket, unsigned char *buffer, packet_t **out, int endereco);
 
 //função do albini
 //utilizar Loop Back ("lo") como device
@@ -116,10 +117,11 @@ int send_to_socket(int socket, unsigned char *buffer, int tam, int tipo, int des
     );
 }
 
-int send_and_wait(int socket, unsigned char *buffer, int tam, int tipo, int destino, int origem, int sequencia) {
+packet_t *send_and_wait(int socket, unsigned char *buffer, int tam, int tipo, int destino, int origem, int sequencia) {
 
     bool ack;
     packet_t *p;
+    int aux;
     int retry = 0;
 
     do {
@@ -128,12 +130,14 @@ int send_and_wait(int socket, unsigned char *buffer, int tam, int tipo, int dest
         auto start = std::chrono::high_resolution_clock::now();
         ack = false;
         do {
-            if (receive_from_socket(socket, buffer, &p, origem) == 0) {
-                if (p->tipo == 0b1000)
-                    ack = true;
-                if (p->tipo == 0b1001)
+            aux = receive_from_socket(socket, buffer, &p, origem);
+            if (aux == -1)
+                aux = send_NACK(socket, buffer, &p, origem);
+            if (aux == 0) {
+                if (p->tipo == 0b1001) //NACK
                     send_to_socket(socket, buffer, tam, tipo, destino, origem, sequencia);
-        
+                else
+                    ack = true;
             }
         } while ((!ack) &&
             (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count() < TIMEOUT));
@@ -143,28 +147,32 @@ int send_and_wait(int socket, unsigned char *buffer, int tam, int tipo, int dest
 
     if (!ack) {
         printf("ERROR: Max tries reached, something's wrong...\n");
-        return -1;
+        return NULL;
     }
-    return 0;
+    return p;
 }
 
-int send_any_size(int socket, unsigned char *buffer, unsigned char *copy_buffer, int tam, int tipo, int destino, int origem) {
+std::vector<packet_t> send_any_size(int socket, unsigned char *buffer, unsigned char *copy_buffer, int tam, int tipo, int destino, int origem) {
 
     int index = 0;
+    packet_t *p;
+    std::vector<packet_t> v;
 
     do {
         memcpy(copy_buffer, buffer, std::min(tam, 15));
 
-        if (send_and_wait(socket, copy_buffer, std::min(tam, 15), tipo, destino, origem, index) == -1) {
+        p = send_and_wait(socket, copy_buffer, std::min(tam, 15), tipo, destino, origem, index);
+        if (p == NULL) {
             printf("PANIC!!!\n");
-            return -1;
+            return {};
         }
+        v.push_back(*p);
         tam = tam - 15;
         buffer = buffer + 15;
         index = (index + 1) % 16;
     } while(tam > 0);
 
-    return 0;
+    return v;
 
 }
 
@@ -237,31 +245,14 @@ int receive_from_socket(int socket, unsigned char *buffer, packet_t **out, int e
 
 packet_t *receive_and_respond(int socket, unsigned char *buffer, int endereco) {
 
-    int aux, retry;
+    int aux;
     packet_t *p;
 
     aux = receive_from_socket(socket, buffer, &p, endereco);
 
-    retry = 0;
 
-    if (aux == 0) {
-        //send ack
-        send_to_socket(socket, buffer, 0, 0b1000, p->e_origem, p->e_destino, 0);
-    }
-    else if (aux == -1) {
-        //send nack
-        send_to_socket(socket, buffer, 0, 0b1001, p->e_origem, p->e_destino, 0);
-        //wait for reponse
-        do {
-            auto start = std::chrono::high_resolution_clock::now();
-            do {
-                aux = receive_from_socket(socket, buffer, &p, endereco);
-            } while ((aux != 0) &&
-                (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count() < TIMEOUT));
-            retry++;
-            if (aux != 0) printf("TIMEOUT, retrying...\n");
-        } while ((aux != 0) && (retry < MAX_RETRIES));
-    }
+    if (aux == -1)
+        aux = send_NACK(socket, buffer, &p, endereco);
 
     if (aux == 0)
         return p;
@@ -277,6 +268,7 @@ std::vector<packet_t> receive_until_termination(int socket, unsigned char *buffe
 
     do {
         p = receive_and_respond(socket, buffer, endereco);
+        send_ACK(socket, buffer, p->e_origem, p->e_destino, p->sequencia);
         v.push_back(*p);
 
         for(int i=0; i < p->tam; i++)
@@ -299,3 +291,45 @@ std::vector<std::string>separate_string(std::string s, char c) {
         v.push_back(aux);
     return v;
 }
+
+
+int send_ACK(int socket, unsigned char *buffer, int destino, int origem, int sequencia) {
+
+    return send_to_socket(socket, buffer, 0, 0b1000, destino, origem, sequencia);
+
+}
+
+int send_NACK(int socket, unsigned char *buffer, packet_t **out, int endereco) {
+
+    int retry=0;
+    int aux;
+    packet_t *p;
+
+    p = *out;
+
+    //send nack
+    send_to_socket(socket, buffer, 0, 0b1001, p->e_origem, p->e_destino, 0);
+    //wait for reponse
+    do {
+        auto start = std::chrono::high_resolution_clock::now();
+        do {
+            aux = receive_from_socket(socket, buffer, &p, endereco);
+        } while ((aux != 0) &&
+            (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count() < TIMEOUT));
+        retry++;
+        if (aux != 0) printf("TIMEOUT, retrying...\n");
+    } while ((aux != 0) && (retry < MAX_RETRIES));
+
+    *out = p;
+
+    return aux;
+}
+
+int send_error(int socket, unsigned char *buffer, int destino, int origem, int error) {
+
+    memcpy(buffer,(const void *)&error, 1);
+    return send_to_socket(socket, buffer, 1, 0b1111, destino, origem, 0);
+    
+}
+
+

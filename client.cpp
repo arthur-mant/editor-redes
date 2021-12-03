@@ -6,7 +6,27 @@
 #define ADDRESS 0b01
 #define REMOTE_ADDRESS 0b10
 
+void print_error(int error) {
+
+    switch (error) {
+        case 1:
+        printf("Falta de permissão\n");
+        break;
+        case 2:
+        printf("Diretório inexistente\n");
+        break;
+        case 3:
+        printf("Arquivo inexistente\n");
+        break;
+        case 4:
+        printf("Linha inexistente\n");
+        break;
+    }
+}
+
 int cd(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned char *copy_buffer) {
+
+    std::vector<packet_t> response;
 
     if (v.size() < 2) {
         printf("please specify a directory\n");
@@ -14,18 +34,46 @@ int cd(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned c
     }
 
     memcpy(buffer, v.at(1).c_str(), v.at(1).size()+1);
-    send_any_size(socket, buffer, copy_buffer, v.at(1).size()+1, , int destino, int origem);
-    //se der erro?
+    response = send_any_size(socket, buffer, copy_buffer, v.at(1).size()+1, 0b0000, REMOTE_ADDRESS, ADDRESS);
+
+    for (auto i: response) {
+        if (i.tipo == 0b1111)
+            print_error(i.dados[0]);
+        else if(i.tipo != 0b1000)
+            printf("got a type %d response (?)\n", i.tipo);
+    }
 
     return 0;
 
 }
+
 void lcd(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned char *copy_buffer) {
     printf("on lcd\n");
 }
+
 void ls(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned char *copy_buffer) {
 
-    printf("on ls\n");
+    std::vector<packet_t> response, aux;
+
+    response = send_any_size(socket, buffer, copy_buffer, 0, 0b0001, REMOTE_ADDRESS, ADDRESS);
+    send_ACK(socket, buffer, REMOTE_ADDRESS, ADDRESS, 0);
+    aux = receive_until_termination(socket, buffer, ADDRESS);
+
+    response.insert(response.end(), aux.begin(), aux.end());
+
+    for (auto i: response) {
+        if (i.tipo == 0b1111)
+            print_error(i.dados[0]);
+        else if(i.tipo == 0b1011) {
+
+            for (int j=0; j<i.tam; j++)
+                printf("%c", i.dados[j]);
+            printf("\n");
+        }       
+        else if(i.tipo != 0b1000)
+            printf("got a type %d response (?)\n", i.tipo);
+    }
+
 }
 void lls(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned char *copy_buffer) {
     printf("on lls\n");
