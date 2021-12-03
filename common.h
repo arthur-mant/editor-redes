@@ -20,6 +20,6 @@ typedef struct packet_t {
 
 int ConexaoRawSocket(char *device);
 int send_any_size(int socket, unsigned char *buffer, unsigned char *copy_buffer, int tam, int tipo, int destino, int origem);
-packet_t *receive_and_respond(int socket, unsigned char *buffer, int endereco);
+std::vector<packet_t> receive_until_termination(int socket, unsigned char *buffer, int endereco);
 std::vector<std::string>separate_string(std::string, char);
 

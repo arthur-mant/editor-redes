@@ -268,6 +268,26 @@ packet_t *receive_and_respond(int socket, unsigned char *buffer, int endereco) {
 
 }
 
+std::vector<packet_t> receive_until_termination(int socket, unsigned char *buffer, int endereco) {
+
+    packet_t *p;
+    std::vector<packet_t> v;
+    bool terminated = false;
+
+    do {
+        p = receive_and_respond(socket, buffer, endereco);
+        v.push_back(*p);
+
+        for(int i=0; i < p->tam; i++)
+            if (p->dados[i] == '\0')
+                terminated = true;
+
+    } while(!terminated);
+
+    return v;
+
+}
+
 std::vector<std::string>separate_string(std::string s, char c) {
 
     std::vector<std::string> v;
