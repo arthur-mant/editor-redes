@@ -10,6 +10,7 @@
 #include <vector>
 #include <netinet/in.h>
 #include <chrono>
+#include <sstream>
 
 #ifndef COMMON
 #define COMMON
@@ -265,4 +266,15 @@ packet_t *receive_and_respond(int socket, unsigned char *buffer, int endereco) {
         return p;
     return NULL;
 
+}
+
+std::vector<std::string>separate_string(std::string s, char c) {
+
+    std::vector<std::string> v;
+    std::stringstream ss(s);
+    std::string aux;
+
+    while (std::getline(ss, aux, c))
+        v.push_back(aux);
+    return v;
 }
