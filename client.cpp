@@ -2,6 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
+#include <unistd.h>
+#include <errno.h>
+#include <dirent.h>
 
 #define ADDRESS 0b01
 #define REMOTE_ADDRESS 0b10
@@ -50,8 +53,33 @@ int cd(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned c
 
 }
 
-void lcd(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned char *copy_buffer) {
-    printf("on lcd\n");
+int lcd(std::vector<std::string> v) {
+
+    char *current_dir = (char *)malloc(sizeof(char)*STRING_BUFFERSIZE);
+
+    current_dir = getcwd(current_dir, STRING_BUFFERSIZE);
+    std::string dir(current_dir);
+
+    if (v.size() < 2) {
+        printf("please specify a directory\n");
+        return -1;
+    }
+
+    dir += '/';
+    dir += v.at(1);
+
+    printf("trying to cd to %s\n", dir.c_str());
+
+    if (chdir(dir.c_str()) == 0) {
+        return 0;
+    }
+    else if (errno == EACCES)
+        print_error(1);
+    else if ((errno == ENOENT) || (errno == ENOTDIR))
+        print_error(2);
+    else
+        print_error(5);
+    return -1;
 }
 
 void ls(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned char *copy_buffer) {
@@ -79,8 +107,44 @@ void ls(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned 
     printf("\n");
 
 }
-void lls(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned char *copy_buffer) {
-    printf("on lls\n");
+int lls(std::vector<std::string> v) {
+    std::string ls;
+    DIR *dir;
+    struct dirent *ent;
+    char *current_dir = (char *)malloc(sizeof(char)*STRING_BUFFERSIZE);
+
+    current_dir = getcwd(current_dir, STRING_BUFFERSIZE);
+    std::string s(current_dir);
+
+/*
+    if (v.size() >= 2) {
+        s += '/';
+        s += v.at(1);
+    }
+*/
+    
+    printf("trying to ls dir %s\n", s.c_str());
+
+    ls = "";
+    if((dir = opendir(s.c_str())) != NULL) {
+        while ((ent = readdir(dir)) != NULL) {
+            ls += ent->d_name;
+            ls += " ";
+        }
+        closedir(dir);
+
+        printf("%s\n", ls.c_str());
+        return 0;
+    }
+    else if (errno == EACCES)
+        print_error(1);
+    else if ((errno == ENOENT) || (errno == ENOTDIR))
+        print_error(2);
+    else
+        print_error(5);
+
+    return -1;
+    
 }
 void ver(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned char *copy_buffer) {
     printf("on ver\n");
@@ -122,13 +186,13 @@ int main () {
                 cd(input, socket, buffer, copy_buffer);
             }
             else if (input.at(0) == "lcd") {
-                lcd(input, socket, buffer, copy_buffer);
+                lcd(input);
             }
             else if (input.at(0) == "ls") {
                 ls(input, socket, buffer, copy_buffer);
             }
             else if (input.at(0) == "lls") {
-                lls(input, socket, buffer, copy_buffer);
+                lls(input);
             }
             else if (input.at(0) == "ver") {
                 ver(input, socket, buffer, copy_buffer);

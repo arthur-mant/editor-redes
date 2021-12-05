@@ -24,6 +24,7 @@ int cd(int socket, packet_t *p, unsigned char *buffer) {
     }
 
     dir += '/';
+    printf("packet to string: %s\n", packet_to_string(v1).c_str());
     dir += packet_to_string(v1);
 
     printf("trying to cd to %s\n", dir.c_str());
@@ -62,6 +63,8 @@ int ls(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buffe
         v1.insert(v1.end(), v2.begin(), v2.end());
     }
 
+    s += '/';
+    printf("packet to string: %s\n", packet_to_string(v1).c_str());
     s += packet_to_string(v1);
     
     printf("trying to ls dir %s\n", s.c_str());
