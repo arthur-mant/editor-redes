@@ -21,6 +21,9 @@ void print_error(int error) {
         case 4:
         printf("Linha inexistente\n");
         break;
+        case 5:
+        printf("Erro não definido\n");
+        break;
     }
 }
 

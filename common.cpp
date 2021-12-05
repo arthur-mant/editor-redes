@@ -271,11 +271,7 @@ std::vector<packet_t> receive_until_termination(int socket, unsigned char *buffe
         send_ACK(socket, buffer, p->e_origem, p->e_destino, p->sequencia);
         v.push_back(*p);
 
-        for(int i=0; i < p->tam; i++)
-            if (p->dados[i] == '\0')
-                terminated = true;
-
-    } while(!terminated);
+    } while(!last_packet(p));
 
     return v;
 
@@ -332,4 +328,27 @@ int send_error(int socket, unsigned char *buffer, int destino, int origem, int e
     
 }
 
+bool last_packet(packet_t *p) {
 
+    if (p->tam < 15)
+        return true;
+    for(int i=0; i < p->tam; i++)
+        if (p->dados[i] == '\0')
+            return true;
+
+    return false;
+
+}
+
+std::string packet_to_string(std::vector<packet_t> v) {
+
+    std::string s;
+
+    s = "";
+    for(auto i: v)
+        for (int j=0; j<i.tam; j++)
+            s+=i.dados[j];
+
+    return s;
+
+}
