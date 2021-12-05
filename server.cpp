@@ -95,7 +95,11 @@ int ls(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buffe
 int ver(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buffer) {
     FILE *fp;
     std::vector<packet_t> v1, v2;
-    std::string aux, aux2, out;
+    std::string out;
+    char *s1, *s2;
+
+    s1 = (char *)malloc(STRING_BUFFERSIZE*sizeof(char));
+    s2 = (char *)malloc(STRING_BUFFERSIZE*sizeof(char));
 
     v1.push_back(*p);
     if (!last_packet(p)) {
@@ -103,21 +107,21 @@ int ver(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buff
         v1.insert(v1.end(), v2.begin(), v2.end());
     }
 
-
-
     fp = fopen(packet_to_string(v1).c_str(), "r");
 
-    if (fp != -1) {
+    if (fp != NULL) {
         int i=0;
-        out = ""
-        while(fscanf(fp, "%s[^\n]", aux2) != 0) {
+        out = "";
+        while(fscanf(fp, "%[^\n]\n", s2) > 0) {
+
             i++;
-            std::sprintf(aux, "%d ", i);
-            out = out+aux+aux2+"\n";
+//            printf("i = %d", i);
+            std::sprintf(s1, "%d ", i);
+            out = (((out+s1)+s2)+"\n");
         }
         fclose(fp);
 
-        printf("ver output:\n%s", out);
+//        printf("ver output (%d):\n%s", out.size()+1, out.c_str());
         
         memcpy(buffer, out.c_str(), out.size()+1);
         send_any_size(socket, buffer, copy_buffer, out.size()+1, 0b1100, REMOTE_ADDRESS, ADDRESS); 

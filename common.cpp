@@ -272,6 +272,7 @@ std::vector<packet_t> receive_until_termination(int socket, unsigned char *buffe
 
         p = receive_and_respond(socket, buffer, endereco);
         if (p != NULL) {
+//            printf("tipo: %d, tam: %d\n", p->tipo, p->tam);
             send_ACK(socket, buffer, p->e_origem, p->e_destino, p->sequencia);
             v.push_back(*p);
         }
