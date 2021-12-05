@@ -337,6 +337,10 @@ bool last_packet(packet_t *p) {
 
     if (p == NULL)
         return false;
+    if (p->tipo == 0b1100)
+        return false;
+    if (p->tipo == 0b1101)
+        return true;
 
     if (p->tam < 15)
         return true;

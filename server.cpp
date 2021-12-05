@@ -93,7 +93,48 @@ int ls(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buffe
 } 
 
 int ver(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buffer) {
-    printf("i'm in ver!\n");
+    FILE *fp;
+    std::vector<packet_t> v1, v2;
+    std::string aux, aux2, out;
+
+    v1.push_back(*p);
+    if (!last_packet(p)) {
+        v2 = receive_until_termination(socket, buffer, ADDRESS);
+        v1.insert(v1.end(), v2.begin(), v2.end());
+    }
+
+
+
+    fp = fopen(packet_to_string(v1).c_str(), "r");
+
+    if (fp != -1) {
+        int i=0;
+        out = ""
+        while(fscanf(fp, "%s[^\n]", aux2) != 0) {
+            i++;
+            std::sprintf(aux, "%d ", i);
+            out = out+aux+aux2+"\n";
+        }
+        fclose(fp);
+
+        printf("ver output:\n%s", out);
+        
+        memcpy(buffer, out.c_str(), out.size()+1);
+        send_any_size(socket, buffer, copy_buffer, out.size()+1, 0b1100, REMOTE_ADDRESS, ADDRESS); 
+        send_any_size(socket, buffer, copy_buffer, 0, 0b1101, REMOTE_ADDRESS, ADDRESS);
+        return 0;
+    }
+    else if (errno == EACCES)
+        send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 1);
+    else if ((errno == EISDIR) || (errno == ENOENT) || (errno == ENOTDIR))
+        send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 3);
+    else
+        send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 5);
+
+    fclose(fp);
+
+    return -1;
+
 } 
 
 int linha(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buffer) {

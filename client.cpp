@@ -147,6 +147,29 @@ int lls(std::vector<std::string> v) {
     
 }
 void ver(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned char *copy_buffer) {
+    std::vector<packet_t> response;
+
+    if (v.size() < 2) {
+        printf("please specify a file\n");
+        return -1;
+    }
+
+    memcpy(buffer, v.at(1).c_str(), v.at(1).size()+1);
+    response = send_any_size(socket, buffer, copy_buffer, v.at(1).size()+1, 0b0010, REMOTE_ADDRESS, ADDRESS);
+
+    for (auto i: response) {
+        if (i.tipo == 0b1100) {
+            for(int j; j<i.tam; j++)
+                printf("%c", i.dados[j]);
+            printf("\n");
+        }
+        if (i.tipo == 0b1111)
+            print_error(i.dados[0]);
+        else if(i.tipo != 0b1000)
+            printf("got a type %d response (?)\n", i.tipo);
+    }
+
+    return 0;
     printf("on ver\n");
 }
 void linha(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned char *copy_buffer) {
