@@ -59,8 +59,10 @@ void ls(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned 
     std::vector<packet_t> response, aux;
 
     response = send_any_size(socket, buffer, copy_buffer, 0, 0b0001, REMOTE_ADDRESS, ADDRESS);
+
     send_ACK(socket, buffer, REMOTE_ADDRESS, ADDRESS, 0);
     aux = receive_until_termination(socket, buffer, ADDRESS);
+
 
     response.insert(response.end(), aux.begin(), aux.end());
 
@@ -68,14 +70,13 @@ void ls(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned 
         if (i.tipo == 0b1111)
             print_error(i.dados[0]);
         else if(i.tipo == 0b1011) {
-
             for (int j=0; j<i.tam; j++)
                 printf("%c", i.dados[j]);
-            printf("\n");
         }       
         else if(i.tipo != 0b1000)
             printf("got a type %d response (?)\n", i.tipo);
     }
+    printf("\n");
 
 }
 void lls(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned char *copy_buffer) {

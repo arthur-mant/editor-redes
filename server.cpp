@@ -18,10 +18,12 @@ int cd(int socket, packet_t *p, unsigned char *buffer) {
     std::string dir(current_dir);
 
     v1.push_back(*p);
-    v2 = receive_until_termination(socket, buffer, ADDRESS);
+    if (!last_packet(p)) {
+        v2 = receive_until_termination(socket, buffer, ADDRESS);
+        v1.insert(v1.end(), v2.begin(), v2.end());
+    }
 
-    v1.insert(v1.end(), v2.begin(), v2.end());
-
+    dir += '/';
     dir += packet_to_string(v1);
 
     printf("trying to cd to %s\n", dir.c_str());

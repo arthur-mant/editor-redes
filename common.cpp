@@ -209,6 +209,8 @@ int receive_from_socket(int socket, unsigned char *buffer, packet_t **out, int e
 
     saddr_len = sizeof (struct sockaddr_ll);
 
+    *out = NULL;
+
 //    buflen = recv(socket, buffer, BUFFERSIZE, 0);
     buflen = recvfrom(socket, buffer, BUFFERSIZE, 0, (struct sockaddr *)&saddr, (socklen_t *)&saddr_len);
 
@@ -267,9 +269,12 @@ std::vector<packet_t> receive_until_termination(int socket, unsigned char *buffe
     bool terminated = false;
 
     do {
+
         p = receive_and_respond(socket, buffer, endereco);
-        send_ACK(socket, buffer, p->e_origem, p->e_destino, p->sequencia);
-        v.push_back(*p);
+        if (p != NULL) {
+            send_ACK(socket, buffer, p->e_origem, p->e_destino, p->sequencia);
+            v.push_back(*p);
+        }
 
     } while(!last_packet(p));
 
@@ -330,6 +335,9 @@ int send_error(int socket, unsigned char *buffer, int destino, int origem, int e
 
 bool last_packet(packet_t *p) {
 
+    if (p == NULL)
+        return false;
+
     if (p->tam < 15)
         return true;
     for(int i=0; i < p->tam; i++)
@@ -346,8 +354,9 @@ std::string packet_to_string(std::vector<packet_t> v) {
 
     s = "";
     for(auto i: v)
-        for (int j=0; j<i.tam; j++)
+        for (int j=0; j<i.tam; j++) {
             s+=i.dados[j];
+        }
 
     return s;
 
