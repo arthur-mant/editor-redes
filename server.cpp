@@ -142,7 +142,64 @@ int ver(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buff
 } 
 
 int linha(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buffer) {
-    printf("i'm in linha!\n");
+    FILE *fp;
+    std::vector<packet_t> v1, v2;
+    std::string out;
+    packet_t *p_aux;
+    char *s1, *s2;
+    int line=0;
+
+    s1 = (char *)malloc(STRING_BUFFERSIZE*sizeof(char));
+    s2 = (char *)malloc(STRING_BUFFERSIZE*sizeof(char));
+
+    v1.push_back(*p);
+    if (!last_packet(p)) {
+        v2 = receive_until_termination(socket, buffer, ADDRESS);
+        v1.insert(v1.end(), v2.begin(), v2.end());
+    }
+
+    fp = fopen(packet_to_string(v1).c_str(), "r");
+
+    if (fp != NULL) {
+
+        send_ACK(socket, buffer, REMOTE_ADDRESS, ADDRESS, 0);
+        p_aux = receive_and_respond(socket, buffer, ADDRESS);
+
+        if (p_aux->tam == 1);
+            line = p_aux->dados[0];
+
+        int i=0;
+        out = "";
+        while(fscanf(fp, "%[^\n]\n", s2) > 0) {
+
+            i++;
+//            printf("i = %d", i);
+            if (line == i) {
+                std::sprintf(s1, "%d ", i);
+                out = (((out+s1)+s2)+"\n");
+            }
+        }
+        fclose(fp);
+
+//        printf("ver output (%d):\n%s", out.size()+1, out.c_str());
+        
+        memcpy(buffer, out.c_str(), out.size()+1);
+        send_any_size(socket, buffer, copy_buffer, out.size()+1, 0b1100, REMOTE_ADDRESS, ADDRESS); 
+        send_any_size(socket, buffer, copy_buffer, 0, 0b1101, REMOTE_ADDRESS, ADDRESS);
+        return 0;
+    }
+    else if (errno == EACCES)
+        send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 1);
+    else if ((errno == EISDIR) || (errno == ENOENT) || (errno == ENOTDIR))
+        send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 3);
+    else
+        send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 5);
+
+    fclose(fp);
+
+    return -1;
+
+
 
 } 
 
