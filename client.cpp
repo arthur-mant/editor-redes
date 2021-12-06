@@ -203,8 +203,8 @@ int linha(std::vector<std::string> v, int socket, unsigned char *buffer, unsigne
     if ((v.size() >= 3) && (std::stoi(v.at(2)) > 0))
         line = std::stoi(v.at(2));
 
-    memcpy(buffer, &line, 1);
-    response = send_any_size(socket, buffer, copy_buffer, 1, 0b1010, REMOTE_ADDRESS, ADDRESS);
+    memcpy(buffer, &line, sizeof(int));
+    response = send_any_size(socket, buffer, copy_buffer, sizeof(int), 0b1010, REMOTE_ADDRESS, ADDRESS);
 
     aux = receive_until_termination(socket, buffer, ADDRESS);
 

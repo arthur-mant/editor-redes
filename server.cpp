@@ -145,9 +145,9 @@ int linha(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_bu
     FILE *fp;
     std::vector<packet_t> v1, v2;
     std::string out;
-    packet_t *p_aux;
     char *s1, *s2;
     int line=0;
+    int *p_int;
 
     s1 = (char *)malloc(STRING_BUFFERSIZE*sizeof(char));
     s2 = (char *)malloc(STRING_BUFFERSIZE*sizeof(char));
@@ -163,10 +163,12 @@ int linha(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_bu
     if (fp != NULL) {
 
         send_ACK(socket, buffer, REMOTE_ADDRESS, ADDRESS, 0);
-        p_aux = receive_and_respond(socket, buffer, ADDRESS);
+        v1 = receive_until_termination(socket, buffer, ADDRESS);
 
-        if (p_aux->tam == 1);
-            line = p_aux->dados[0];
+        if (v1.at(0).tam == sizeof(int)) {
+            p_int = (int *)v1.at(0).dados;
+            line = p_int[0];
+        }
 
         int i=0;
         out = "";
@@ -174,7 +176,7 @@ int linha(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_bu
 
             i++;
 //            printf("i = %d", i);
-            if (line == i) {
+            if ((line == i) || (line == 0)) {
                 std::sprintf(s1, "%d ", i);
                 out = (((out+s1)+s2)+"\n");
             }
@@ -229,7 +231,7 @@ int main () {
     buffer = (unsigned char *)malloc(BUFFERSIZE*sizeof(unsigned char));
     copy_buffer = (unsigned char *)malloc(BUFFERSIZE*sizeof(unsigned char));
     socket = ConexaoRawSocket("lo");
-    std::cout << "socket " << socket << " initialized" << std::endl;
+    //std::cout << "socket " << socket << " initialized" << std::endl;
 
     while (!end) {
         p = receive_and_respond(socket, buffer, ADDRESS);
