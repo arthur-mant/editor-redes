@@ -336,11 +336,94 @@ printf("on linhas\n");
     fclose(fp);
 
     return -1;
-    printf("i'm in linhas!\n");
 
 } 
 
 int edit(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buffer) {
+    FILE *fp;
+    std::vector<packet_t> v1, v2;
+    std::string out, filename, edit_line;
+    std::vector<std::string> file_text;
+    char *s;
+    int line, i;
+    DIR *dir;
+
+printf("on edit\n");
+
+    s = (char *)malloc(STRING_BUFFERSIZE*sizeof(char));
+
+    v1.push_back(*p);
+    if (!last_packet(p)) {
+        v2 = receive_until_termination(socket, buffer, ADDRESS);
+        v1.insert(v1.end(), v2.begin(), v2.end());
+    }
+
+    filename = packet_to_string(v1);
+
+    dir = opendir(filename.c_str());
+    if (dir) {
+        closedir(dir);
+        send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 5);
+        return -1;
+    }
+
+    printf("opening file\n");
+
+    fp = fopen(filename.c_str(), "r");
+
+    if (fp != NULL) {
+
+        send_ACK(socket, buffer, REMOTE_ADDRESS, ADDRESS, 0);
+
+        printf("receiving line number\n");
+
+        v1 = receive_until_termination(socket, buffer, ADDRESS);
+
+        printf("received successfully\n");
+
+        if (v1.at(0).tam == sizeof(int)) {
+            line = *((int *)v1.at(0).dados);
+        }
+        while(fscanf(fp, "%[^\n]\n", s) > 0)
+            file_text.push_back(s);
+        fclose(fp);        
+        printf("sending ack\n");
+
+        if (line > (int)file_text.size()+1)
+            send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 4);
+            return -1;
+
+        send_ACK(socket, buffer, REMOTE_ADDRESS, ADDRESS, 0);
+
+        printf("receiving text\n");
+
+        edit_line = packet_to_string(receive_until_termination(socket, buffer, ADDRESS)); 
+
+        file_text.at(line-1) = edit_line;
+
+        fp = fopen(filename.c_str(), "w");
+
+        printf("writing to file\n");
+
+        for(auto i: file_text) {
+
+            fprintf(fp, "%s\n", i.c_str());
+
+        }
+
+        fclose(fp);        
+
+        return 0;
+    }
+    else if (errno == EACCES)
+        send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 1);
+    else if ((errno == EISDIR) || (errno == ENOENT) || (errno == ENOTDIR))
+        send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 3);
+    else
+        send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 5);
+
+    fclose(fp);
+
     printf("i'm in edit!\n");
 
 } 

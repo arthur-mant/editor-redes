@@ -277,8 +277,81 @@ int linhas(std::vector<std::string> v, int socket, unsigned char *buffer, unsign
 
     return 0;
 }
-void edit(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned char *copy_buffer) {
+int edit(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned char *copy_buffer) {
+    std::vector<packet_t> response, aux;
+    std::string s;
+    bool writing_line;
+    int line = -1;
     printf("on edit\n");
+
+    if (v.size() < 4) {
+        printf("please specify a file, line number and new line\n");
+        return -1;
+    }
+
+    memcpy(buffer, v.at(1).c_str(), v.at(1).size()+1);
+    response = send_any_size(socket, buffer, copy_buffer, v.at(1).size()+1, 0b0101, REMOTE_ADDRESS, ADDRESS);
+    for (auto i: response) {
+        if (i.tipo == 0b1111) {
+            print_error(i.dados[0]);
+            return -1;
+        }
+        else if(i.tipo != 0b1000) {
+            printf("got a type %d response (?)\n", i.tipo);
+            return -1;
+        }
+    }
+
+    line = std::stoi(v.at(2));
+
+    memcpy(buffer, &line, sizeof(int));
+    response = send_any_size(socket, buffer, copy_buffer, sizeof(int), 0b1010, REMOTE_ADDRESS, ADDRESS);
+    for (auto i: response) {
+        if (i.tipo == 0b1111) {
+            print_error(i.dados[0]);
+            return -1;
+        }
+        else if(i.tipo != 0b1000) {
+            printf("got a type %d response (?)\n", i.tipo);
+            return -1;
+        }
+    }
+
+    s = "";
+    writing_line = false;
+    for (auto i: v) {
+        if (i.at(0) == '"')
+            writing_line = true;
+        if (writing_line) {
+            if (i.at(0) == '"')
+                s += i.substr(1, i.size());
+            else if (i.at(i.size()-1) == '"')
+                s += i.substr(0, i.size()-1);
+            else 
+                s+=i;
+            s+=" ";
+        }
+        if (i.at(i.size()-1) == '"')
+            writing_line = false;
+    }
+
+    printf("line to write: %s\n", s.c_str());
+
+    memcpy(buffer, s.c_str(), s.size()+1);
+    response = send_any_size(socket, buffer, copy_buffer, s.size()+1, 0b1100, REMOTE_ADDRESS, ADDRESS);
+
+    for (auto i: response) {
+        if (i.tipo == 0b1111) {
+            print_error(i.dados[0]);
+            return -1;
+        }
+        else if(i.tipo != 0b1000) {
+            printf("got a type %d response (?)\n", i.tipo);
+            return -1;
+        }
+    }
+
+    return 0;
 }
 void compilar(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned char *copy_buffer) {
     printf("on compilar\n");
