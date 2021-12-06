@@ -178,7 +178,6 @@ int ver(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned 
         else if((i.tipo != 0b1000) && (i.tipo != 0b1101))
             printf("got a type %d response (?)\n", i.tipo);
     }
-    printf("\n");
 
     return 0;
 }
@@ -226,7 +225,6 @@ int linha(std::vector<std::string> v, int socket, unsigned char *buffer, unsigne
         else if((i.tipo != 0b1000) && (i.tipo != 0b1101))
             printf("got a type %d response (?)\n", i.tipo);
     }
-    printf("\n");
 
     return 0;
 }

@@ -100,9 +100,11 @@ int ver(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buff
     DIR *dir;
     struct dirent *ent;
     char *current_dir = (char *)malloc(sizeof(char)*STRING_BUFFERSIZE);
+    bool exists = false;
+
     current_dir = getcwd(current_dir, STRING_BUFFERSIZE);
     std::string s(current_dir);
-    bool exists = false;
+
 
     s1 = (char *)malloc(STRING_BUFFERSIZE*sizeof(char));
     s2 = (char *)malloc(STRING_BUFFERSIZE*sizeof(char));
@@ -123,7 +125,6 @@ int ver(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buff
     }
 
     if (!exists) {
-        printf("sending error\n");
         send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 3);
         return -1;
     }
@@ -164,10 +165,18 @@ int ver(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buff
 int linha(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buffer) {
     FILE *fp;
     std::vector<packet_t> v1, v2;
-    std::string out;
+    std::string out, filename;
     char *s1, *s2;
     int line=0;
     int *p_int;
+    DIR *dir;
+    struct dirent *ent;
+    char *current_dir = (char *)malloc(sizeof(char)*STRING_BUFFERSIZE);
+    bool exists = false;
+
+    current_dir = getcwd(current_dir, STRING_BUFFERSIZE);
+    std::string s(current_dir);
+
 
     s1 = (char *)malloc(STRING_BUFFERSIZE*sizeof(char));
     s2 = (char *)malloc(STRING_BUFFERSIZE*sizeof(char));
@@ -178,7 +187,21 @@ int linha(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_bu
         v1.insert(v1.end(), v2.begin(), v2.end());
     }
 
-    fp = fopen(packet_to_string(v1).c_str(), "r");
+    filename = packet_to_string(v1);
+
+    if((dir = opendir(s.c_str())) != NULL) {
+        while ((ent = readdir(dir)) != NULL) {
+            if (strcmp(filename.c_str(), ent->d_name) == 0)
+                exists = true;;
+        }
+    }
+
+    if (!exists) {
+        send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 3);
+        return -1;
+    }
+
+    fp = fopen(filename.c_str(), "r");
 
     if (fp != NULL) {
 
