@@ -98,12 +98,7 @@ int ver(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buff
     std::string out, filename;
     char *s1, *s2;
     DIR *dir;
-    struct dirent *ent;
-    char *current_dir = (char *)malloc(sizeof(char)*STRING_BUFFERSIZE);
     bool exists = false;
-
-    current_dir = getcwd(current_dir, STRING_BUFFERSIZE);
-    std::string s(current_dir);
 
 
     s1 = (char *)malloc(STRING_BUFFERSIZE*sizeof(char));
@@ -117,12 +112,11 @@ int ver(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buff
 
     filename = packet_to_string(v1);
 
-    if((dir = opendir(s.c_str())) != NULL) {
-        while ((ent = readdir(dir)) != NULL) {
-            if (strcmp(filename.c_str(), ent->d_name) == 0)
-                exists = true;;
-        }
-    }
+    dir = opendir(filename.c_str());
+    if (dir)
+        closedir(dir);
+    if(errno == ENOTDIR)
+        exists = true;
 
     if (!exists) {
         send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 3);
@@ -130,7 +124,7 @@ int ver(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buff
     }
 
     fp = fopen(filename.c_str(), "r");
-
+printf("%p\n", fp);
     if (fp != NULL) {
         int i=0;
         out = "";
@@ -156,7 +150,9 @@ int ver(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buff
     else
         send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 5);
 
-    fclose(fp);
+   
+    if (fp != NULL)
+        fclose(fp);
 
     return -1;
 
@@ -170,12 +166,7 @@ int linha(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_bu
     int line=0;
     int *p_int;
     DIR *dir;
-    struct dirent *ent;
-    char *current_dir = (char *)malloc(sizeof(char)*STRING_BUFFERSIZE);
     bool exists = false;
-
-    current_dir = getcwd(current_dir, STRING_BUFFERSIZE);
-    std::string s(current_dir);
 
 
     s1 = (char *)malloc(STRING_BUFFERSIZE*sizeof(char));
@@ -189,12 +180,11 @@ int linha(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_bu
 
     filename = packet_to_string(v1);
 
-    if((dir = opendir(s.c_str())) != NULL) {
-        while ((ent = readdir(dir)) != NULL) {
-            if (strcmp(filename.c_str(), ent->d_name) == 0)
-                exists = true;;
-        }
-    }
+    dir = opendir(filename.c_str());
+    if (dir)
+        closedir(dir);
+    if(errno == ENOTDIR)
+        exists = true;
 
     if (!exists) {
         send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 3);
