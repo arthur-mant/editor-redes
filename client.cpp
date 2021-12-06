@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <dirent.h>
+#include <algorithm>
 
 #define ADDRESS 0b01
 #define REMOTE_ADDRESS 0b10
@@ -228,8 +229,53 @@ int linha(std::vector<std::string> v, int socket, unsigned char *buffer, unsigne
 
     return 0;
 }
-void linhas(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned char *copy_buffer) {
-    printf("on linhas\n");
+int linhas(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned char *copy_buffer) {
+    std::vector<packet_t> response, aux;
+    int line[10];
+
+    if (v.size() < 2) {
+        printf("please specify a file\n");
+        return -1;
+    }
+
+    memcpy(buffer, v.at(1).c_str(), v.at(1).size()+1);
+    response = send_any_size(socket, buffer, copy_buffer, v.at(1).size()+1, 0b0100, REMOTE_ADDRESS, ADDRESS);
+    for (auto i: response) {
+        if (i.tipo == 0b1111) {
+            print_error(i.dados[0]);
+            return -1;
+        }
+        else if(i.tipo != 0b1000) {
+            printf("got a type %d response (?)\n", i.tipo);
+            return -1;
+        }
+    }
+
+    if ((v.size() >= 3) && (std::stoi(v.at(2)) > 0))
+        line[0] = std::stoi(v.at(2));
+    if ((v.size() >= 4) && (std::stoi(v.at(3)) > 0))
+        line[1] = std::stoi(v.at(3));
+
+    memcpy(buffer, line, std::max(0,(int)v.size()-2)*sizeof(int));
+    response = send_any_size(socket, buffer, copy_buffer, std::max(0, (int)v.size()-2)*sizeof(int), 0b1010, REMOTE_ADDRESS, ADDRESS);
+
+    aux = receive_until_termination(socket, buffer, ADDRESS);
+
+    response.insert(response.end(), aux.begin(), aux.end());
+
+    for (auto i: response) {
+        if (i.tipo == 0b1100) {
+            for(int j=0; j<i.tam; j++)
+                printf("%c", i.dados[j]);
+
+        }
+        else if (i.tipo == 0b1111)
+            print_error(i.dados[0]);
+        else if((i.tipo != 0b1000) && (i.tipo != 0b1101))
+            printf("got a type %d response (?)\n", i.tipo);
+    }
+
+    return 0;
 }
 void edit(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned char *copy_buffer) {
     printf("on edit\n");

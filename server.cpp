@@ -17,6 +17,8 @@ int cd(int socket, packet_t *p, unsigned char *buffer) {
     current_dir = getcwd(current_dir, STRING_BUFFERSIZE);
     std::string dir(current_dir);
 
+    printf("on cd\n");
+
     v1.push_back(*p);
     if (!last_packet(p)) {
         v2 = receive_until_termination(socket, buffer, ADDRESS);
@@ -52,6 +54,8 @@ int ls(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buffe
     DIR *dir;
     struct dirent *ent;
     char *current_dir = (char *)malloc(sizeof(char)*STRING_BUFFERSIZE);
+
+    printf("on ls\n");
 
     current_dir = getcwd(current_dir, STRING_BUFFERSIZE);
     std::string s(current_dir);
@@ -100,6 +104,7 @@ int ver(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buff
     DIR *dir;
     bool exists = false;
 
+    printf("on ver\n");
 
     s1 = (char *)malloc(STRING_BUFFERSIZE*sizeof(char));
     s2 = (char *)malloc(STRING_BUFFERSIZE*sizeof(char));
@@ -168,6 +173,7 @@ int linha(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_bu
     DIR *dir;
     bool exists = false;
 
+    printf("on linha\n");
 
     s1 = (char *)malloc(STRING_BUFFERSIZE*sizeof(char));
     s2 = (char *)malloc(STRING_BUFFERSIZE*sizeof(char));
@@ -239,6 +245,97 @@ int linha(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_bu
 } 
 
 int linhas(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buffer) {
+    FILE *fp;
+    std::vector<packet_t> v1, v2;
+    std::string out, filename;
+    char *s1, *s2;
+    int upper, lower;
+    int *p_int;
+    DIR *dir;
+    bool exists = false;
+
+printf("on linhas\n");
+
+    upper = 0;
+    lower = 0;
+
+    s1 = (char *)malloc(STRING_BUFFERSIZE*sizeof(char));
+    s2 = (char *)malloc(STRING_BUFFERSIZE*sizeof(char));
+
+    v1.push_back(*p);
+    if (!last_packet(p)) {
+        v2 = receive_until_termination(socket, buffer, ADDRESS);
+        v1.insert(v1.end(), v2.begin(), v2.end());
+    }
+
+    filename = packet_to_string(v1);
+
+    dir = opendir(filename.c_str());
+    if (dir)
+        closedir(dir);
+    if(errno == ENOTDIR)
+        exists = true;
+
+    if (!exists) {
+        send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 3);
+        return -1;
+    }
+
+    fp = fopen(filename.c_str(), "r");
+
+    if (fp != NULL) {
+
+        send_ACK(socket, buffer, REMOTE_ADDRESS, ADDRESS, 0);
+        v1 = receive_until_termination(socket, buffer, ADDRESS);
+
+        if (v1.at(0).tam == 2*sizeof(int)) {
+            p_int = (int *)v1.at(0).dados;
+            lower = p_int[0];
+            upper = p_int[1];
+        }
+        else if (v1.at(0).tam == sizeof(int)) {
+            p_int = (int *)v1.at(0).dados;
+            lower = p_int[0];
+            upper = -1;
+        }
+        else {
+            lower = upper = -1;
+        }
+
+        int i=0;
+        out = "";
+        while(fscanf(fp, "%[^\n]\n", s2) > 0) {
+
+            i++;
+//            printf("i = %d", i);
+            if (
+                ((i >= lower) && (i <= upper)) ||
+                ((i >= lower) && (upper == -1)) ||
+                ((lower == -1) && (upper == -1))
+                ) {
+                std::sprintf(s1, "%d ", i);
+                out = (((out+s1)+s2)+"\n");
+            }
+        }
+        fclose(fp);
+
+//        printf("ver output (%d):\n%s", out.size()+1, out.c_str());
+        
+        memcpy(buffer, out.c_str(), out.size()+1);
+        send_any_size(socket, buffer, copy_buffer, out.size()+1, 0b1100, REMOTE_ADDRESS, ADDRESS); 
+        send_any_size(socket, buffer, copy_buffer, 0, 0b1101, REMOTE_ADDRESS, ADDRESS);
+        return 0;
+    }
+    else if (errno == EACCES)
+        send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 1);
+    else if ((errno == EISDIR) || (errno == ENOENT) || (errno == ENOTDIR))
+        send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 3);
+    else
+        send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 5);
+
+    fclose(fp);
+
+    return -1;
     printf("i'm in linhas!\n");
 
 } 
