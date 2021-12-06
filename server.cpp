@@ -93,10 +93,16 @@ int ls(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buffe
 } 
 
 int ver(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buffer) {
-    FILE *fp;
+    FILE *fp=NULL;
     std::vector<packet_t> v1, v2;
-    std::string out;
+    std::string out, filename;
     char *s1, *s2;
+    DIR *dir;
+    struct dirent *ent;
+    char *current_dir = (char *)malloc(sizeof(char)*STRING_BUFFERSIZE);
+    current_dir = getcwd(current_dir, STRING_BUFFERSIZE);
+    std::string s(current_dir);
+    bool exists = false;
 
     s1 = (char *)malloc(STRING_BUFFERSIZE*sizeof(char));
     s2 = (char *)malloc(STRING_BUFFERSIZE*sizeof(char));
@@ -107,7 +113,22 @@ int ver(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buff
         v1.insert(v1.end(), v2.begin(), v2.end());
     }
 
-    fp = fopen(packet_to_string(v1).c_str(), "r");
+    filename = packet_to_string(v1);
+
+    if((dir = opendir(s.c_str())) != NULL) {
+        while ((ent = readdir(dir)) != NULL) {
+            if (strcmp(filename.c_str(), ent->d_name) == 0)
+                exists = true;;
+        }
+    }
+
+    if (!exists) {
+        printf("sending error\n");
+        send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 3);
+        return -1;
+    }
+
+    fp = fopen(filename.c_str(), "r");
 
     if (fp != NULL) {
         int i=0;
@@ -115,13 +136,12 @@ int ver(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buff
         while(fscanf(fp, "%[^\n]\n", s2) > 0) {
 
             i++;
-//            printf("i = %d", i);
             std::sprintf(s1, "%d ", i);
             out = (((out+s1)+s2)+"\n");
         }
         fclose(fp);
 
-//        printf("ver output (%d):\n%s", out.size()+1, out.c_str());
+
         
         memcpy(buffer, out.c_str(), out.size()+1);
         send_any_size(socket, buffer, copy_buffer, out.size()+1, 0b1100, REMOTE_ADDRESS, ADDRESS); 

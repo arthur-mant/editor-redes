@@ -156,6 +156,10 @@ int ver(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned 
 
     memcpy(buffer, v.at(1).c_str(), v.at(1).size()+1);
     response = send_any_size(socket, buffer, copy_buffer, v.at(1).size()+1, 0b0010, REMOTE_ADDRESS, ADDRESS);
+
+    if (response.at(0).tipo == 0b1111)
+            print_error(response.at(0).dados[0]);
+        
     send_ACK(socket, buffer, REMOTE_ADDRESS, ADDRESS, 0);
     aux = receive_until_termination(socket, buffer, ADDRESS);
 
