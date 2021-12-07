@@ -129,7 +129,7 @@ int ver(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buff
     }
 
     fp = fopen(filename.c_str(), "r");
-printf("%p\n", fp);
+
     if (fp != NULL) {
         int i=0;
         out = "";
@@ -368,25 +368,14 @@ printf("on edit\n");
         return -1;
     }
 
-    printf("opening file\n");
-
     fp = fopen(filename.c_str(), "r");
 
     if (fp != NULL) {
 
         send_ACK(socket, buffer, REMOTE_ADDRESS, ADDRESS, 0);
 
-        printf("receiving line number\n");
-
-/*
-        do {
-            p_aux = receive_and_respond(socket, buffer, ADDRESS);
-        } while(p_aux == NULL);
-*/
         v1 = receive_all_no_response(socket, buffer, ADDRESS);
         p_aux = v1.at(0);
-
-        printf("tipo: %d\n", p_aux.tipo);
 
         if (p_aux.tam == sizeof(int)) {
             line = *((int *)p_aux.dados);
@@ -395,7 +384,6 @@ printf("on edit\n");
         while(fscanf(fp, "%[^\n]\n", s) > 0)
             file_text.push_back(s);
         fclose(fp);        
-        printf("modifying line: %d, sending ack\n", line);
 
         if (line > (int)file_text.size()+1) {
             send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 4);
@@ -404,15 +392,11 @@ printf("on edit\n");
 
         send_ACK(socket, buffer, REMOTE_ADDRESS, ADDRESS, 0);
 
-        printf("receiving text\n");
-
         edit_line = packet_to_string(receive_until_termination(socket, buffer, ADDRESS)); 
 
         file_text.at(line-1) = edit_line;
 
         fp = fopen(filename.c_str(), "w");
-
-        printf("writing to file\n");
 
         for(auto i: file_text) {
 
@@ -433,7 +417,7 @@ printf("on edit\n");
 
     fclose(fp);
 
-    printf("i'm in edit!\n");
+    return -1;
 
 } 
 

@@ -274,7 +274,6 @@ std::vector<packet_t> receive_all_no_response(int socket, unsigned char *buffer,
 //            printf("tipo: %d, tam: %d\n", p->tipo, p->tam);
             if (!last_packet(p))
                 send_ACK(socket, buffer, p->e_origem, p->e_destino, p->sequencia);
-            else printf("received last packet\n");
             v.push_back(*p);
         }
 

@@ -159,7 +159,7 @@ int ver(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned 
     response = send_any_size(socket, buffer, copy_buffer, v.at(1).size()+1, 0b0010, REMOTE_ADDRESS, ADDRESS);
 
     if (response.at(0).tipo == 0b1111)
-            print_error(response.at(0).dados[0]);
+        print_error(response.at(0).dados[0]);
         
     send_ACK(socket, buffer, REMOTE_ADDRESS, ADDRESS, 0);
     aux = receive_until_termination(socket, buffer, ADDRESS);
@@ -304,10 +304,8 @@ int edit(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned
 
     line = std::stoi(v.at(2));
 
-    printf("%d\n", (int)sizeof(int));
     memcpy(buffer, &line, sizeof(int));
     response = send_any_size(socket, buffer, copy_buffer, sizeof(int), 0b1010, REMOTE_ADDRESS, ADDRESS);
-    printf("received response\n");
 
     for (auto i: response) {
         if (i.tipo == 0b1111) {
@@ -327,7 +325,7 @@ int edit(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned
             writing_line = true;
         if (writing_line) {
             if ((i.at(0) == '"') && (i.at(i.size()-1) == '"')) {
-                s += i.substr(1, i.size()-1);
+                s += i.substr(1, i.size()-2);
                 printf("1\n");
             }
             else if (i.at(0) == '"')
@@ -341,8 +339,6 @@ int edit(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned
         if (i.at(i.size()-1) == '"')
             writing_line = false;
     }
-
-    printf("line to write: %s\n", s.c_str());
 
     memcpy(buffer, s.c_str(), s.size()+1);
     response = send_any_size(socket, buffer, copy_buffer, s.size()+1, 0b1100, REMOTE_ADDRESS, ADDRESS);
