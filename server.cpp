@@ -463,19 +463,11 @@ int main () {
             if (p->tipo == 0b0110)
                 compilar(socket, p, buffer, copy_buffer);
 
-            if (p->tipo == 0b1101)
+            if (p->tipo == 0b1101) {
                 end = true;
+                send_ACK(socket, buffer, REMOTE_ADDRESS, ADDRESS, 0);
+            }
         }
 
-/*
-        for(auto p: v) {
-            printf("received %d bytes from %d, type = %d, sequence number = %d\n", p.tam, p.e_origem, p.tipo, p.sequencia);
-            for (int j=0; j<p.tam; j++)
-                printf("%c ", p.dados[j]);
-            printf("\n");
-
-
-        }
-*/        
     }
 }

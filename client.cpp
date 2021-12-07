@@ -411,16 +411,12 @@ int main () {
                 compilar(input, socket, buffer, copy_buffer);
             }
             else if (input.at(0) == "exit") {
+                send_any_size(socket, buffer, copy_buffer, 0, 0b1101, REMOTE_ADDRESS, ADDRESS);
                 end = true;
             }
             else {
                 printf("unrecognized command, try again\n");
             }       
 
-/*
-        if (s.size() > 0) std::cout << "received " << s << " from input" << std::endl;
-        memcpy(buffer, s.c_str(), s.size()+1);
-        send_any_size(socket, buffer, copy_buffer, s.size()+1, 0b0111, 0b10, ADDRESS);
-*/
     }
 }
