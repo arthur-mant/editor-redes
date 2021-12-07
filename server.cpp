@@ -344,6 +344,7 @@ int edit(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buf
     std::vector<packet_t> v1, v2;
     std::string out, filename, edit_line;
     std::vector<std::string> file_text;
+    packet_t p_aux;
     char *s;
     int line, i;
     DIR *dir;
@@ -377,21 +378,29 @@ printf("on edit\n");
 
         printf("receiving line number\n");
 
-        v1 = receive_until_termination(socket, buffer, ADDRESS);
+/*
+        do {
+            p_aux = receive_and_respond(socket, buffer, ADDRESS);
+        } while(p_aux == NULL);
+*/
+        v1 = receive_all_no_response(socket, buffer, ADDRESS);
+        p_aux = v1.at(0);
 
-        printf("received successfully\n");
+        printf("tipo: %d\n", p_aux.tipo);
 
-        if (v1.at(0).tam == sizeof(int)) {
-            line = *((int *)v1.at(0).dados);
+        if (p_aux.tam == sizeof(int)) {
+            line = *((int *)p_aux.dados);
         }
+
         while(fscanf(fp, "%[^\n]\n", s) > 0)
             file_text.push_back(s);
         fclose(fp);        
-        printf("sending ack\n");
+        printf("modifying line: %d, sending ack\n", line);
 
-        if (line > (int)file_text.size()+1)
+        if (line > (int)file_text.size()+1) {
             send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 4);
             return -1;
+        }
 
         send_ACK(socket, buffer, REMOTE_ADDRESS, ADDRESS, 0);
 

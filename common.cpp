@@ -261,8 +261,7 @@ packet_t *receive_and_respond(int socket, unsigned char *buffer, int endereco) {
     return NULL;
 
 }
-
-std::vector<packet_t> receive_until_termination(int socket, unsigned char *buffer, int endereco) {
+std::vector<packet_t> receive_all_no_response(int socket, unsigned char *buffer, int endereco) {
 
     packet_t *p;
     std::vector<packet_t> v;
@@ -273,11 +272,24 @@ std::vector<packet_t> receive_until_termination(int socket, unsigned char *buffe
         p = receive_and_respond(socket, buffer, endereco);
         if (p != NULL) {
 //            printf("tipo: %d, tam: %d\n", p->tipo, p->tam);
-            send_ACK(socket, buffer, p->e_origem, p->e_destino, p->sequencia);
+            if (!last_packet(p))
+                send_ACK(socket, buffer, p->e_origem, p->e_destino, p->sequencia);
+            else printf("received last packet\n");
             v.push_back(*p);
         }
 
     } while(!last_packet(p));
+
+    return v;
+
+}
+
+
+std::vector<packet_t> receive_until_termination(int socket, unsigned char *buffer, int endereco) {
+
+    std::vector<packet_t> v;
+    v = receive_all_no_response(socket, buffer, endereco);
+    send_ACK(socket, buffer, v.at(v.size()-1).e_origem, v.at(v.size()-1).e_destino, v.at(v.size()-1).sequencia);
 
     return v;
 

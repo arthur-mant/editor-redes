@@ -304,8 +304,11 @@ int edit(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned
 
     line = std::stoi(v.at(2));
 
+    printf("%d\n", (int)sizeof(int));
     memcpy(buffer, &line, sizeof(int));
     response = send_any_size(socket, buffer, copy_buffer, sizeof(int), 0b1010, REMOTE_ADDRESS, ADDRESS);
+    printf("received response\n");
+
     for (auto i: response) {
         if (i.tipo == 0b1111) {
             print_error(i.dados[0]);
@@ -323,7 +326,11 @@ int edit(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned
         if (i.at(0) == '"')
             writing_line = true;
         if (writing_line) {
-            if (i.at(0) == '"')
+            if ((i.at(0) == '"') && (i.at(i.size()-1) == '"')) {
+                s += i.substr(1, i.size()-1);
+                printf("1\n");
+            }
+            else if (i.at(0) == '"')
                 s += i.substr(1, i.size());
             else if (i.at(i.size()-1) == '"')
                 s += i.substr(0, i.size()-1);
@@ -339,6 +346,9 @@ int edit(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned
 
     memcpy(buffer, s.c_str(), s.size()+1);
     response = send_any_size(socket, buffer, copy_buffer, s.size()+1, 0b1100, REMOTE_ADDRESS, ADDRESS);
+    aux = send_any_size(socket, buffer, copy_buffer, 0, 0b1101, REMOTE_ADDRESS, ADDRESS);
+
+    response.insert(response.end(), aux.begin(), aux.end());
 
     for (auto i: response) {
         if (i.tipo == 0b1111) {
