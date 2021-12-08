@@ -86,8 +86,13 @@ int lcd(std::vector<std::string> v) {
 void ls(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned char *copy_buffer) {
 
     std::vector<packet_t> response, aux;
+    std::string s = "";
+    
+    if (v.size() > 1)
+        s = v.at(1);
 
-    response = send_any_size(socket, buffer, copy_buffer, 0, 0b0001, REMOTE_ADDRESS, ADDRESS);
+    memcpy(buffer, s.c_str(), s.size()+1);
+    response = send_any_size(socket, buffer, copy_buffer, s.size()+1, 0b0001, REMOTE_ADDRESS, ADDRESS);
 
     send_ACK(socket, buffer, REMOTE_ADDRESS, ADDRESS, 0);
     aux = receive_until_termination(socket, buffer, ADDRESS);
@@ -369,10 +374,12 @@ int compilar(std::vector<std::string> v, int socket, unsigned char *buffer, unsi
         line += (v.at(i) + " ");
     }
 
+/*
     for(int i=0; i<line.size()+1; i++)
         printf("%c ", line.c_str()[i]);
     printf("\n");
     printf("tam: %d\n", line.size()+1);
+*/
 
     memcpy(buffer, line.c_str(), line.size()+1);
     response = send_any_size(socket, buffer, copy_buffer, line.size()+1, 0b0110, REMOTE_ADDRESS, ADDRESS);

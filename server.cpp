@@ -56,22 +56,23 @@ int ls(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buffe
     DIR *dir;
     struct dirent *ent;
     char *current_dir = (char *)malloc(sizeof(char)*STRING_BUFFERSIZE);
+    std::stringstream ss;
+    std::string s;
 
     printf("on ls\n");
 
     current_dir = getcwd(current_dir, STRING_BUFFERSIZE);
-    std::string s(current_dir);
 
     v1.push_back(*p);
 
     if (!last_packet(p)) {
-        v2 = receive_until_termination(socket, buffer, ADDRESS);
+        send_ACK(socket, buffer, REMOTE_ADDRESS, ADDRESS, 0);
+        v2 = receive_all_no_response(socket, buffer, ADDRESS);
         v1.insert(v1.end(), v2.begin(), v2.end());
     }
 
-    s += '/';
-    printf("packet to string: %s\n", packet_to_string(v1).c_str());
-    s += packet_to_string(v1);
+    ss << current_dir << "/" << packet_to_string(v1).c_str();
+    s = ss.str();
     
     printf("trying to ls dir %s\n", s.c_str());
 
@@ -436,8 +437,8 @@ int compilar(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy
 
     s = (char *)malloc(STRING_BUFFERSIZE*sizeof(char));
 
-    v1.push_back(*p);
     send_ACK(socket, buffer, REMOTE_ADDRESS, ADDRESS, 0);
+    v1.push_back(*p);
     if (!last_packet(p)) {
         v2 = receive_until_termination(socket, buffer, ADDRESS);
         v1.insert(v1.end(), v2.begin(), v2.end());
