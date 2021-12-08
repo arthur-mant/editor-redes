@@ -223,10 +223,11 @@ int linha(std::vector<std::string> v, int socket, unsigned char *buffer, unsigne
     memcpy(buffer, &line, sizeof(int));
     response = send_any_size(socket, buffer, copy_buffer, sizeof(int), 0b1010, REMOTE_ADDRESS, ADDRESS);
 
-    aux = receive_until_termination(socket, buffer, ADDRESS);
-
-    response.insert(response.end(), aux.begin(), aux.end());
-
+    if (!last_packet(&response.at(0))) {
+        send_ACK(socket, buffer, REMOTE_ADDRESS, ADDRESS, 0);
+        aux = receive_until_termination(socket, buffer, ADDRESS);
+        response.insert(response.end(), aux.begin(), aux.end());
+    }
 
     for (auto i: response) {
         if (i.tipo == 0b1100) {
