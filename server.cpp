@@ -364,7 +364,8 @@ printf("on edit\n");
 
     v1.push_back(*p);
     if (!last_packet(p)) {
-        v2 = receive_until_termination(socket, buffer, ADDRESS);
+        send_ACK(socket, buffer, REMOTE_ADDRESS, ADDRESS, 0);
+        v2 = receive_all_no_response(socket, buffer, ADDRESS);
         v1.insert(v1.end(), v2.begin(), v2.end());
     }
 
@@ -377,56 +378,60 @@ printf("on edit\n");
         return -1;
     }
 
+    line = 0;
+    file_text = {};
+
     fp = fopen(filename.c_str(), "r");
 
     if (fp != NULL) {
 
-        send_ACK(socket, buffer, REMOTE_ADDRESS, ADDRESS, 0);
-
-        v1 = receive_all_no_response(socket, buffer, ADDRESS);
-        p_aux = v1.at(0);
-
-        if (p_aux.tam == sizeof(int)) {
-            line = *((int *)p_aux.dados);
-        }
-
         while(fscanf(fp, "%[^\n]\n", s) > 0)
             file_text.push_back(s);
-        fclose(fp);        
-
-        if (line > (int)file_text.size()+1) {
-            send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 4);
-            return -1;
-        }
-
-        send_ACK(socket, buffer, REMOTE_ADDRESS, ADDRESS, 0);
-
-        edit_line = packet_to_string(receive_until_termination(socket, buffer, ADDRESS)); 
-
-        file_text.at(line-1) = edit_line;
-
-        fp = fopen(filename.c_str(), "w");
-
-        for(auto i: file_text) {
-
-            fprintf(fp, "%s\n", i.c_str());
-
-        }
-
-        fclose(fp);        
-
-        return 0;
+        fclose(fp);
     }
-    else if (errno == EACCES)
+    else if (errno == EACCES) {
         send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 1);
-    else if ((errno == EISDIR) || (errno == ENOENT) || (errno == ENOTDIR))
+        return -1;
+    }
+    else if (errno == EISDIR) {
         send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 3);
+        return -1;
+    }
+
+    send_ACK(socket, buffer, REMOTE_ADDRESS, ADDRESS, 0);
+
+    v1 = receive_all_no_response(socket, buffer, ADDRESS);
+    p_aux = v1.at(0);
+
+    if (p_aux.tam == sizeof(int)) {
+        line = *((int *)p_aux.dados);
+    }
+
+    if (line > (int)file_text.size()+1) {
+        send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 4);
+        return -1;
+    }
+
+    send_ACK(socket, buffer, REMOTE_ADDRESS, ADDRESS, 0);
+
+    edit_line = packet_to_string(receive_until_termination(socket, buffer, ADDRESS)); 
+
+    if (line < file_text.size())
+        file_text.at(line-1) = edit_line;
     else
-        send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 5);
+        file_text.push_back(edit_line);
 
-    fclose(fp);
+    fp = fopen(filename.c_str(), "w");
 
-    return -1;
+    for(auto i: file_text) {
+
+        fprintf(fp, "%s\n", i.c_str());
+
+    }
+
+    fclose(fp);        
+
+    return 0;
 
 } 
 
