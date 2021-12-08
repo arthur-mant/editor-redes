@@ -443,7 +443,7 @@ int compilar(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy
         v1.insert(v1.end(), v2.begin(), v2.end());
     }
 
-    ss << "gcc " << packet_to_string(v1).c_str() << " >& " << GCC_OUT_FILE;
+    ss << "gcc " << packet_to_string(v1).c_str() << " 2> " << GCC_OUT_FILE;
     line = ss.str();
 
     printf("gcc line: %s\n", line.c_str());
