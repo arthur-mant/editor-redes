@@ -114,17 +114,21 @@ int ver(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buff
 
     v1.push_back(*p);
     if (!last_packet(p)) {
-        v2 = receive_until_termination(socket, buffer, ADDRESS);
+        send_ACK(socket, buffer, REMOTE_ADDRESS, ADDRESS, 0);
+        v2 = receive_all_no_response(socket, buffer, ADDRESS);
         v1.insert(v1.end(), v2.begin(), v2.end());
     }
 
     filename = packet_to_string(v1);
+
+    printf("opening dir\n");
 
     dir = opendir(filename.c_str());
     if (dir)
         closedir(dir);
     if(errno == ENOTDIR)
         exists = true;
+    printf("dir opened\n");
 
     if (!exists) {
         send_error(socket, buffer, REMOTE_ADDRESS, ADDRESS, 3);
