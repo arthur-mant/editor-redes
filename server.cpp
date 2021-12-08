@@ -272,7 +272,8 @@ printf("on linhas\n");
 
     v1.push_back(*p);
     if (!last_packet(p)) {
-        v2 = receive_until_termination(socket, buffer, ADDRESS);
+        send_ACK(socket, buffer, REMOTE_ADDRESS, ADDRESS, 0);
+        v2 = receive_all_no_response(socket, buffer, ADDRESS);
         v1.insert(v1.end(), v2.begin(), v2.end());
     }
 
@@ -294,7 +295,7 @@ printf("on linhas\n");
     if (fp != NULL) {
 
         send_ACK(socket, buffer, REMOTE_ADDRESS, ADDRESS, 0);
-        v1 = receive_until_termination(socket, buffer, ADDRESS);
+        v1 = receive_all_no_response(socket, buffer, ADDRESS);
 
         if (v1.at(0).tam == 2*sizeof(int)) {
             p_int = (int *)v1.at(0).dados;
