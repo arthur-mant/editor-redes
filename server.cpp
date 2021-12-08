@@ -5,9 +5,11 @@
 #include <unistd.h>
 #include <errno.h>
 #include <dirent.h>
+#include <sstream>
 
 #define ADDRESS 0b10
 #define REMOTE_ADDRESS 0b01
+#define GCC_OUT_FILE "gcc_out.temp"
 
 int cd(int socket, packet_t *p, unsigned char *buffer) {
 
@@ -422,7 +424,62 @@ printf("on edit\n");
 } 
 
 int compilar(int socket, packet_t *p, unsigned char *buffer, unsigned char *copy_buffer) {
+    FILE *fp;
+    std::vector<packet_t> v1, v2;
+    std::string out, line;
+    std::stringstream ss;
+    char *s;
+    DIR *dir;
+    bool exists = false;
+
     printf("i'm in compilar!\n");
+
+    s = (char *)malloc(STRING_BUFFERSIZE*sizeof(char));
+
+    v1.push_back(*p);
+    send_ACK(socket, buffer, REMOTE_ADDRESS, ADDRESS, 0);
+    if (!last_packet(p)) {
+        v2 = receive_until_termination(socket, buffer, ADDRESS);
+        v1.insert(v1.end(), v2.begin(), v2.end());
+    }
+
+    ss << "gcc " << packet_to_string(v1).c_str() << " >& " << GCC_OUT_FILE;
+    line = ss.str();
+
+    printf("gcc line: %s\n", line.c_str());
+
+    system(line.c_str());
+
+    printf("opening file\n");
+    dir = opendir(GCC_OUT_FILE);
+    if (dir)
+        closedir(dir);
+    if(errno == ENOTDIR)
+        exists = true;
+
+    if (!exists) {
+        send_any_size(socket, buffer, copy_buffer, 0, 0b1101, REMOTE_ADDRESS, ADDRESS);
+        return 0;
+    }
+
+    fp = fopen(GCC_OUT_FILE, "r");
+
+    out = "";
+    while(fscanf(fp, "%[^\n]\n", s) > 0) {
+        out = (out+s)+"\n";
+    }
+   
+    fclose(fp); 
+
+    ss << "rm " << GCC_OUT_FILE;
+    line = ss.str();
+
+    system(line.c_str());
+        
+    memcpy(buffer, out.c_str(), out.size()+1);
+    send_any_size(socket, buffer, copy_buffer, out.size()+1, 0b1100, REMOTE_ADDRESS, ADDRESS); 
+    send_any_size(socket, buffer, copy_buffer, 0, 0b1101, REMOTE_ADDRESS, ADDRESS);
+    return 0;
 
 } 
 

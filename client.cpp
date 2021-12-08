@@ -359,8 +359,40 @@ int edit(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned
 
     return 0;
 }
-void compilar(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned char *copy_buffer) {
-    printf("on compilar\n");
+int compilar(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned char *copy_buffer) {
+
+    std::string line;
+    std::vector<packet_t> response;
+
+    line = "";
+    for (int i=1; i<v.size(); i++) {
+        line += (v.at(i) + " ");
+    }
+
+    for(int i=0; i<line.size()+1; i++)
+        printf("%c ", line.c_str()[i]);
+    printf("\n");
+    printf("tam: %d\n", line.size()+1);
+
+    memcpy(buffer, line.c_str(), line.size()+1);
+    response = send_any_size(socket, buffer, copy_buffer, line.size()+1, 0b0110, REMOTE_ADDRESS, ADDRESS);
+        
+    response = receive_until_termination(socket, buffer, ADDRESS);
+
+
+    for (auto i: response) {
+        if (i.tipo == 0b1100) {
+            for(int j=0; j<i.tam; j++)
+                printf("%c", i.dados[j]);
+
+        }
+        else if (i.tipo == 0b1111)
+            print_error(i.dados[0]);
+        else if((i.tipo != 0b1000) && (i.tipo != 0b1101))
+            printf("got a type %d response (?)\n", i.tipo);
+    }
+
+    return 0;
 }
 
 int main () {
