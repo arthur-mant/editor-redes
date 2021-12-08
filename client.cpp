@@ -83,7 +83,7 @@ int lcd(std::vector<std::string> v) {
     return -1;
 }
 
-void ls(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned char *copy_buffer) {
+int ls(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned char *copy_buffer) {
 
     std::vector<packet_t> response, aux;
     std::string s = "";
@@ -93,6 +93,12 @@ void ls(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned 
 
     memcpy(buffer, s.c_str(), s.size()+1);
     response = send_any_size(socket, buffer, copy_buffer, s.size()+1, 0b0001, REMOTE_ADDRESS, ADDRESS);
+
+    if (response.at(0).tipo == 0b1111) {
+        print_error(response.at(0).dados[0]);
+        return -1;
+    }
+
 
     send_ACK(socket, buffer, REMOTE_ADDRESS, ADDRESS, 0);
     aux = receive_until_termination(socket, buffer, ADDRESS);
@@ -111,6 +117,7 @@ void ls(std::vector<std::string> v, int socket, unsigned char *buffer, unsigned 
             printf("got a type %d response (?)\n", i.tipo);
     }
     printf("\n");
+    return 0;
 
 }
 int lls(std::vector<std::string> v) {

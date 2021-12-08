@@ -159,7 +159,6 @@ std::vector<packet_t> send_any_size(int socket, unsigned char *buffer, unsigned 
     std::vector<packet_t> v;
 
     do {
-        printf("tam enviado: %d\n", tam);
         memcpy(copy_buffer, buffer, std::min(tam, 15));
 
         p = send_and_wait(socket, copy_buffer, std::min(tam, 15), tipo, destino, origem, index);
@@ -172,8 +171,6 @@ std::vector<packet_t> send_any_size(int socket, unsigned char *buffer, unsigned 
         buffer = buffer + 15;
         index = (index + 1) % 16;
     } while(tam > 0);
-
-    printf("finished sending\n");
 
     return v;
 
@@ -275,14 +272,12 @@ std::vector<packet_t> receive_all_no_response(int socket, unsigned char *buffer,
         if (p != NULL) {
 //            printf("tipo: %d, tam: %d\n", p->tipo, p->tam);
             if (!last_packet(p)) {
-                printf("sending ack\n");
                 send_ACK(socket, buffer, p->e_origem, p->e_destino, p->sequencia);
             }
             v.push_back(*p);
         }
 
     } while(!last_packet(p));
-    printf("received last package\n");
 
     return v;
 
@@ -362,7 +357,6 @@ bool last_packet(packet_t *p) {
     if (p->tam < 15)
         return true;
     for(int i=0; i < p->tam; i++) {
-        printf("%#10x\n", p->dados[i]);
         if (p->dados[i] == '\0')
             return true;
     }
